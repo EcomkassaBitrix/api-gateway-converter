@@ -170,6 +170,66 @@ const DocsTab = () => {
             </div>
           </div>
         </div>
+
+        <div className="border-t pt-6">
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <Badge variant="default">GET</Badge>
+            <code className="text-sm">/api/convert/ferma-status</code>
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Получение статуса чека из eKomKassa (аналог Ferma Status API)
+          </p>
+          <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800 mb-4">
+            <p className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Статус чека: <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/report/{'{uuid}'}</code>
+              </span>
+              <span className="block">
+                <Icon name="Info" size={12} className="inline mr-1" />
+                UUID чека получается из ответа при создании чека
+              </span>
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Query параметры:</h4>
+              <div className="bg-muted p-3 rounded-lg font-mono text-xs mb-4">
+                <div className="space-y-1">
+                  <div><span className="text-primary">AuthToken</span>: string <span className="text-muted-foreground">// Обязательно, токен из /api/convert/ferma-auth</span></div>
+                  <div><span className="text-primary">uuid</span>: string <span className="text-muted-foreground">// Обязательно, UUID чека</span></div>
+                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, код группы ККТ (по умолчанию "700")</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Пример запроса:</h4>
+              <div className="bg-muted p-3 rounded-lg font-mono text-xs overflow-x-auto">
+                <code>GET /api/convert/ferma-status?AuthToken=ваш_токен&uuid=550e8400-e29b-41d4-a716-446655440000&group_code=700</code>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Возможные статусы:</h4>
+              <div className="grid gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline">wait</Badge>
+                  <span className="text-muted-foreground">Чек в очереди на обработку</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline">done</Badge>
+                  <span className="text-muted-foreground">Чек успешно пробит</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Badge variant="outline">fail</Badge>
+                  <span className="text-muted-foreground">Ошибка при создании чека</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

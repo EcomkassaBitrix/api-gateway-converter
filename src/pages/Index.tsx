@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import StatsCards from '@/components/gateway/StatsCards';
 import AuthTab from '@/components/gateway/AuthTab';
 import SandboxTab from '@/components/gateway/SandboxTab';
+import StatusTab from '@/components/gateway/StatusTab';
 import DocsTab from '@/components/gateway/DocsTab';
 import LogsTab from '@/components/gateway/LogsTab';
 import AnalyticsTab from '@/components/gateway/AnalyticsTab';
@@ -21,6 +22,13 @@ const Index = () => {
   });
   const [authToken, setAuthToken] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const [statusForm, setStatusForm] = useState({
+    uuid: '',
+    group_code: '700'
+  });
+  const [statusResult, setStatusResult] = useState('');
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   const exampleFermaRequest = {
     "operation": "sell",
@@ -113,6 +121,45 @@ const Index = () => {
     }
   };
 
+  const handleCheckStatus = async () => {
+    setIsCheckingStatus(true);
+    
+    try {
+      const params = new URLSearchParams({
+        AuthToken: authToken,
+        uuid: statusForm.uuid,
+        group_code: statusForm.group_code
+      });
+
+      const response = await fetch(`${funcUrls['ekomkassa-status']}?${params}`, {
+        method: 'GET'
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setStatusResult(JSON.stringify(data, null, 2));
+        
+        if (data.status === 'done') {
+          toast.success('Чек успешно пробит');
+        } else if (data.status === 'wait') {
+          toast.info('Чек в очереди на обработку');
+        } else if (data.status === 'fail') {
+          toast.error('Ошибка при создании чека');
+        }
+      } else {
+        setStatusResult(JSON.stringify(data, null, 2));
+        const errorMsg = data.error?.text || data.error || 'Ошибка проверки статуса';
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      toast.error('Ошибка связи с сервером');
+      console.error('Status check error:', error);
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  };
+
   const statsData = [
     { label: 'Всего запросов', value: '1,247', icon: 'Activity', trend: '+12%' },
     { label: 'Успешных', value: '1,198', icon: 'CheckCircle2', trend: '+8%' },
@@ -143,7 +190,7 @@ const Index = () => {
         <StatsCards statsData={statsData} />
 
         <Tabs defaultValue="auth" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
             <TabsTrigger value="auth" className="gap-2">
               <Icon name="KeyRound" size={16} />
               Авторизация
@@ -151,6 +198,10 @@ const Index = () => {
             <TabsTrigger value="sandbox" className="gap-2">
               <Icon name="PlayCircle" size={16} />
               Песочница
+            </TabsTrigger>
+            <TabsTrigger value="status" className="gap-2">
+              <Icon name="Search" size={16} />
+              Статус
             </TabsTrigger>
             <TabsTrigger value="docs" className="gap-2">
               <Icon name="BookOpen" size={16} />
@@ -184,6 +235,17 @@ const Index = () => {
               isConverting={isConverting}
               handleConvert={handleConvert}
               loadExample={loadExample}
+            />
+          </TabsContent>
+
+          <TabsContent value="status" className="space-y-6">
+            <StatusTab
+              statusForm={statusForm}
+              setStatusForm={setStatusForm}
+              authToken={authToken}
+              statusResult={statusResult}
+              isCheckingStatus={isCheckingStatus}
+              handleCheckStatus={handleCheckStatus}
             />
           </TabsContent>
 

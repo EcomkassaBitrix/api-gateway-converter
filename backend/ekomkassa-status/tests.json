@@ -1,0 +1,34 @@
+{
+  "tests": [
+    {
+      "name": "Missing AuthToken",
+      "method": "GET",
+      "path": "/?uuid=test-uuid-123",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "AuthToken required"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing uuid",
+      "method": "GET",
+      "path": "/?AuthToken=test-token",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "uuid required"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Valid request with default group_code",
+      "method": "GET",
+      "path": "/?AuthToken=invalid-token&uuid=test-uuid-123",
+      "expectedStatus": 400,
+      "expectedBody": {
+        "status": "fail"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
