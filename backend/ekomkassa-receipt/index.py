@@ -5,11 +5,10 @@ from datetime import datetime
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Конвертация Ferma API в Атол v5 (eKomKassa) и создание чека
-    URL: POST /api/convert/ferma-to-atol
+    Business: Конвертация Ferma API receipt в eKomKassa (Атол v5)
     Args: event - dict с httpMethod, body (полный Ferma Request или упрощенный формат)
           context - объект с request_id, function_name
-    Returns: HTTP response с результатом создания чека в eKomKassa
+    Returns: HTTP response с результатом создания чека
     '''
     method: str = event.get('httpMethod', 'GET')
     

@@ -4,8 +4,7 @@ from typing import Dict, Any
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Получение статуса чека (Ferma Status → eKomKassa report)
-    URL: GET /api/convert/ferma-status
+    Business: Конвертация Ferma Status в eKomKassa report
     Args: event - dict с httpMethod, queryStringParameters (AuthToken, group_code, uuid)
           context - объект с request_id, function_name
     Returns: HTTP response со статусом чека из eKomKassa
