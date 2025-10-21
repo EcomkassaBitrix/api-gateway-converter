@@ -15,7 +15,6 @@ const Index = () => {
   const [fermaInput, setFermaInput] = useState('');
   const [atolOutput, setAtolOutput] = useState('');
   const [isConverting, setIsConverting] = useState(false);
-  const [usedInvoiceIds, setUsedInvoiceIds] = useState<Record<string, Set<string>>>({});
   
   const [authForm, setAuthForm] = useState({
     login: '',
@@ -145,47 +144,13 @@ const Index = () => {
     "group_code": "700"
   };
 
-  const generateInvoiceId = (groupCode: string): string => {
-    const prefix = 'APIGW';
-    const datePart = new Date().getTime();
-    const randomPart = Math.floor(Math.random() * 1000000);
-    
-    let invoiceId = `${prefix}_${datePart}_${randomPart}`;
-    
-    if (!usedInvoiceIds[groupCode]) {
-      usedInvoiceIds[groupCode] = new Set();
-    }
-    
-    while (usedInvoiceIds[groupCode].has(invoiceId)) {
-      const newRandomPart = Math.floor(Math.random() * 1000000);
-      invoiceId = `${prefix}_${datePart}_${newRandomPart}`;
-    }
-    
-    const newUsedIds = { ...usedInvoiceIds };
-    if (!newUsedIds[groupCode]) {
-      newUsedIds[groupCode] = new Set();
-    }
-    newUsedIds[groupCode].add(invoiceId);
-    setUsedInvoiceIds(newUsedIds);
-    
-    return invoiceId;
-  };
-
   const loadExample = () => {
-    const example = { ...exampleFermaRequest };
-    const groupCode = example.group_code || '700';
-    example.Request.InvoiceId = generateInvoiceId(groupCode);
-    
-    setFermaInput(JSON.stringify(example, null, 2));
+    setFermaInput(JSON.stringify(exampleFermaRequest, null, 2));
     toast.info('Загружен пример продажи');
   };
 
   const loadCorrectionExample = () => {
-    const example = { ...exampleCorrectionRequest };
-    const groupCode = example.group_code || '700';
-    example.Request.InvoiceId = generateInvoiceId(groupCode);
-    
-    setFermaInput(JSON.stringify(example, null, 2));
+    setFermaInput(JSON.stringify(exampleCorrectionRequest, null, 2));
     toast.info('Загружен пример коррекции');
   };
 
