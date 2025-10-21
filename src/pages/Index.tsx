@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import StatsCards from '@/components/gateway/StatsCards';
+import AuthTab from '@/components/gateway/AuthTab';
+import SandboxTab from '@/components/gateway/SandboxTab';
+import DocsTab from '@/components/gateway/DocsTab';
+import LogsTab from '@/components/gateway/LogsTab';
+import AnalyticsTab from '@/components/gateway/AnalyticsTab';
 
 const Index = () => {
   const [fermaInput, setFermaInput] = useState('');
@@ -136,20 +136,7 @@ const Index = () => {
           <p className="text-muted-foreground">Конвертация протокола Ferma в Атол Онлайн</p>
         </header>
 
-        <div className="grid gap-6 md:grid-cols-4 mb-8 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          {statsData.map((stat, idx) => (
-            <Card key={idx} className="hover-scale">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardDescription className="text-xs font-medium">{stat.label}</CardDescription>
-                <Icon name={stat.icon as any} className="text-muted-foreground" size={16} />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <p className="text-xs text-primary mt-1">{stat.trend}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <StatsCards statsData={statsData} />
 
         <Tabs defaultValue="auth" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
@@ -176,448 +163,36 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="auth" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Lock" size={20} />
-                    Ferma AuthToken
-                  </CardTitle>
-                  <CardDescription>Запрос токена авторизации в формате Ferma</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login">Логин</Label>
-                    <Input
-                      id="login"
-                      type="text"
-                      placeholder="your_login"
-                      value={authForm.login}
-                      onChange={(e) => setAuthForm({ ...authForm, login: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Пароль</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={authForm.password}
-                      onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="groupCode">
-                      Код группы <span className="text-muted-foreground text-xs">(опционально для Атол)</span>
-                    </Label>
-                    <Input
-                      id="groupCode"
-                      type="text"
-                      placeholder="group_code"
-                      value={authForm.groupCode}
-                      onChange={(e) => setAuthForm({ ...authForm, groupCode: e.target.value })}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Код группы из личного кабинета Атол Онлайн
-                    </p>
-                  </div>
-
-                  <Button 
-                    onClick={handleAuth}
-                    disabled={!authForm.login || !authForm.password || isAuthenticating}
-                    className="w-full mt-4"
-                  >
-                    {isAuthenticating ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                        Получение токена...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="Key" size={16} className="mr-2" />
-                        Получить токен
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Shield" size={20} />
-                    Атол getToken
-                  </CardTitle>
-                  <CardDescription>Результат конвертации в формат Атол Онлайн</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {authToken ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-muted rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Icon name="CheckCircle2" size={16} className="text-green-500" />
-                          <span className="text-sm font-medium">Токен получен</span>
-                        </div>
-                        <Textarea
-                          value={JSON.stringify({
-                            code: 0,
-                            text: "",
-                            token: authToken
-                          }, null, 2)}
-                          readOnly
-                          className="font-mono text-xs min-h-[200px] bg-background"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Access Token</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={authToken}
-                            readOnly
-                            className="font-mono text-xs"
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="icon"
-                            onClick={() => {
-                              navigator.clipboard.writeText(authToken);
-                              toast.success('Токен скопирован');
-                            }}
-                          >
-                            <Icon name="Copy" size={16} />
-                          </Button>
-                        </div>
-                      </div>
-
-                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                        <div className="flex items-start gap-2">
-                          <Icon name="Info" size={16} className="text-blue-500 mt-0.5" />
-                          <div className="text-xs text-blue-700 dark:text-blue-300">
-                            <p className="font-medium mb-1">Использование токена:</p>
-                            <p>Токен действителен 24 часа. Используйте его в заголовке <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">Token: {'{token}'}</code> при запросах к Атол API</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-                      <div className="p-4 bg-muted rounded-full mb-4">
-                        <Icon name="KeyRound" size={32} className="text-muted-foreground" />
-                      </div>
-                      <h3 className="font-semibold mb-2">Токен не получен</h3>
-                      <p className="text-sm text-muted-foreground max-w-sm">
-                        Введите учетные данные слева и нажмите "Получить токен" для авторизации
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <AuthTab
+              authForm={authForm}
+              setAuthForm={setAuthForm}
+              authToken={authToken}
+              isAuthenticating={isAuthenticating}
+              handleAuth={handleAuth}
+            />
           </TabsContent>
 
           <TabsContent value="sandbox" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Icon name="FileJson" size={20} />
-                        Ferma Input
-                      </CardTitle>
-                      <CardDescription>Введите запрос в формате Ferma</CardDescription>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={loadExample}>
-                      <Icon name="Sparkles" size={14} className="mr-1" />
-                      Пример
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={fermaInput}
-                    onChange={(e) => setFermaInput(e.target.value)}
-                    placeholder='{"operation": "sell", "items": [...]}'
-                    className="font-mono text-sm min-h-[400px]"
-                  />
-                  <Button 
-                    onClick={handleConvert} 
-                    disabled={!fermaInput || isConverting}
-                    className="w-full mt-4"
-                  >
-                    {isConverting ? (
-                      <>
-                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                        Конвертация...
-                      </>
-                    ) : (
-                      <>
-                        <Icon name="ArrowRight" size={16} className="mr-2" />
-                        Конвертировать
-                      </>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Code2" size={20} />
-                    Атол Output
-                  </CardTitle>
-                  <CardDescription>Результат конвертации в формат Атол</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={atolOutput}
-                    readOnly
-                    placeholder="Результат появится здесь..."
-                    className="font-mono text-sm min-h-[400px] bg-muted"
-                  />
-                  {atolOutput && (
-                    <Button variant="outline" className="w-full mt-4">
-                      <Icon name="Copy" size={16} className="mr-2" />
-                      Копировать
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+            <SandboxTab
+              fermaInput={fermaInput}
+              setFermaInput={setFermaInput}
+              atolOutput={atolOutput}
+              isConverting={isConverting}
+              handleConvert={handleConvert}
+              loadExample={loadExample}
+            />
           </TabsContent>
 
           <TabsContent value="docs" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon name="Book" size={20} />
-                  API Документация
-                </CardTitle>
-                <CardDescription>Полное описание эндпоинтов и параметров конвертации</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                <div>
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="default">POST</Badge>
-                    <code className="text-sm">/api/auth/token</code>
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Получение токена авторизации (Ferma AuthToken → Атол getToken)
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Параметры Ferma:</h4>
-                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
-                        <div className="space-y-1">
-                          <div><span className="text-primary">login</span>: string <span className="text-muted-foreground">// Обязательно</span></div>
-                          <div><span className="text-primary">password</span>: string <span className="text-muted-foreground">// Обязательно</span></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Параметры Атол (конвертация):</h4>
-                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
-                        <div className="space-y-1">
-                          <div><span className="text-primary">login</span>: string <span className="text-muted-foreground">// Из Ferma</span></div>
-                          <div><span className="text-primary">pass</span>: string <span className="text-muted-foreground">// password из Ferma</span></div>
-                          <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, из ЛК Атол</span></div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Ответ Атол:</h4>
-                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
-                        {'{'}<br />
-                        &nbsp;&nbsp;<span className="text-primary">"code"</span>: 0,<br />
-                        &nbsp;&nbsp;<span className="text-primary">"text"</span>: "",<br />
-                        &nbsp;&nbsp;<span className="text-primary">"token"</span>: "eyJhbGc..."<br />
-                        {'}'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t pt-6">
-                  <h3 className="font-semibold mb-3 flex items-center gap-2">
-                    <Badge variant="default">POST</Badge>
-                    <code className="text-sm">/api/convert/ferma-to-atol</code>
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Конвертирует запрос из формата Ferma в формат Атол Онлайн
-                  </p>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Поддерживаемые операции:</h4>
-                      <div className="grid gap-2">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline">sell</Badge>
-                          <span className="text-muted-foreground">Продажа товаров/услуг</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline">refund</Badge>
-                          <span className="text-muted-foreground">Возврат средств</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline">sell_correction</Badge>
-                          <span className="text-muted-foreground">Коррекция прихода</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Badge variant="outline">refund_correction</Badge>
-                          <span className="text-muted-foreground">Коррекция расхода</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Типы НДС:</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <span className="text-muted-foreground">vat20 → НДС 20%</span>
-                        <span className="text-muted-foreground">vat10 → НДС 10%</span>
-                        <span className="text-muted-foreground">vat0 → НДС 0%</span>
-                        <span className="text-muted-foreground">none → Без НДС</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-semibold mb-2">Способы оплаты:</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <span className="text-muted-foreground">cash → Наличные (0)</span>
-                        <span className="text-muted-foreground">card → Электронные (1)</span>
-                        <span className="text-muted-foreground">prepaid → Предоплата (2)</span>
-                        <span className="text-muted-foreground">credit → Постоплата (3)</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <DocsTab />
           </TabsContent>
 
           <TabsContent value="logs" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Icon name="FileText" size={20} />
-                  Последние запросы
-                </CardTitle>
-                <CardDescription>История конвертации в реальном времени</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {recentLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Badge variant={log.status === 'success' ? 'default' : 'destructive'}>
-                          {log.status === 'success' ? (
-                            <Icon name="Check" size={12} className="mr-1" />
-                          ) : (
-                            <Icon name="X" size={12} className="mr-1" />
-                          )}
-                          {log.status}
-                        </Badge>
-                        <span className="font-mono text-sm">{log.method}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Icon name="Clock" size={12} />
-                          {log.time}
-                        </span>
-                        <Badge variant="outline">{log.duration}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <LogsTab recentLogs={recentLogs} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="TrendingUp" size={20} />
-                    Статистика по операциям
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      { type: 'sell', count: 847, percent: 68 },
-                      { type: 'refund', count: 248, percent: 20 },
-                      { type: 'sell_correction', count: 98, percent: 8 },
-                      { type: 'refund_correction', count: 54, percent: 4 },
-                    ].map((item) => (
-                      <div key={item.type}>
-                        <div className="flex justify-between mb-1 text-sm">
-                          <span className="font-medium">{item.type}</span>
-                          <span className="text-muted-foreground">{item.count}</span>
-                        </div>
-                        <div className="w-full bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all"
-                            style={{ width: `${item.percent}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Icon name="Gauge" size={20} />
-                    Производительность
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium">Успешность</span>
-                        <span className="text-sm text-muted-foreground">96.1%</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-3">
-                        <div className="bg-green-500 h-3 rounded-full" style={{ width: '96.1%' }} />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium">Avg Response Time</span>
-                        <span className="text-sm text-muted-foreground">124ms</span>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-3">
-                        <div className="bg-primary h-3 rounded-full" style={{ width: '75%' }} />
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t">
-                      <div className="grid grid-cols-2 gap-4 text-center">
-                        <div>
-                          <div className="text-2xl font-bold text-primary">99.7%</div>
-                          <div className="text-xs text-muted-foreground">Uptime</div>
-                        </div>
-                        <div>
-                          <div className="text-2xl font-bold text-primary">2.4s</div>
-                          <div className="text-xs text-muted-foreground">P95 Latency</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <AnalyticsTab />
           </TabsContent>
         </Tabs>
       </div>
