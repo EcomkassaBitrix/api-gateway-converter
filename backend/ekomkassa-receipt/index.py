@@ -180,21 +180,11 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     
     timestamp = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
     
-    atol_receipt = {
-        'timestamp': timestamp,
-        'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
-        'receipt': {
-            'client': client_info,
-            'company': {
-                'email': client_info.get('email', 'shop@example.com'),
-                'sno': sno,
-                'inn': ferma_request.get('Inn', '0000000000'),
-                'payment_address': ferma_request.get('CallbackUrl', 'https://example.com')
-            },
-            'items': atol_items,
-            'payments': atol_payments,
-            'total': sum(item['sum'] for item in atol_items)
-        }
+    company_data = {
+        'email': client_info.get('email', 'shop@example.com'),
+        'sno': sno,
+        'inn': ferma_request.get('Inn', '0000000000'),
+        'payment_address': ferma_request.get('CallbackUrl', 'https://example.com')
     }
     
     if is_correction:
@@ -204,11 +194,34 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'INSTRUCTION': 'instruction'
         }
         
-        atol_receipt['correction'] = {
-            'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
-            'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
-            'base_number': correction_info.get('ReceiptId', '1'),
-            'base_name': correction_info.get('Description', 'Корректировка')
+        atol_receipt = {
+            'timestamp': timestamp,
+            'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
+            'correction': {
+                'client': client_info,
+                'company': company_data,
+                'correction_info': {
+                    'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
+                    'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
+                    'base_number': correction_info.get('ReceiptId', '1'),
+                    'base_name': correction_info.get('Description', 'Корректировка')
+                },
+                'items': atol_items,
+                'payments': atol_payments,
+                'total': sum(item['sum'] for item in atol_items)
+            }
+        }
+    else:
+        atol_receipt = {
+            'timestamp': timestamp,
+            'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
+            'receipt': {
+                'client': client_info,
+                'company': company_data,
+                'items': atol_items,
+                'payments': atol_payments,
+                'total': sum(item['sum'] for item in atol_items)
+            }
         }
     
     if ferma_request.get('CallbackUrl'):
