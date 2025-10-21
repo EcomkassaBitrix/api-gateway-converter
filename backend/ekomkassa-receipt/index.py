@@ -1,6 +1,7 @@
 import json
 import requests
 from typing import Dict, Any, Optional
+from datetime import datetime
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -83,10 +84,38 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         6: 'credit_payment'
     }
     
+    measure_mapping = {
+        'PIECE': 0,
+        'GRAM': 10,
+        'KILOGRAM': 11,
+        'TON': 12,
+        'CENTIMETER': 20,
+        'DECIMETER': 21,
+        'METER': 22,
+        'SQUARE_CENTIMETER': 30,
+        'SQUARE_DECIMETER': 31,
+        'SQUARE_METER': 32,
+        'MILLILITER': 40,
+        'LITER': 41,
+        'CUBIC_METER': 42,
+        'KILOWATT_HOUR': 50,
+        'GIGACALORIE': 51,
+        'DAY': 70,
+        'HOUR': 71,
+        'MINUTE': 72,
+        'SECOND': 73,
+        'KILOBYTE': 80,
+        'MEGABYTE': 81,
+        'GIGABYTE': 82,
+        'TERABYTE': 83,
+        'OTHER': 255
+    }
+    
     atol_items = []
     for item in items:
         vat_type = ferma_vat_mapping.get(item.get('Vat', 'VatNo'), 'none')
         payment_method = payment_method_mapping.get(item.get('PaymentMethod', 4), 'full_payment')
+        measure = measure_mapping.get(item.get('Measure', 'PIECE'), 0)
         
         atol_item = {
             'name': item.get('Label', 'Товар'),
@@ -94,7 +123,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'quantity': float(item.get('Quantity', 1)),
             'sum': float(item.get('Amount', 0)),
             'payment_method': payment_method,
-            'payment_object': 'service',
+            'payment_object': 4,
+            'measure': measure,
             'vat': {
                 'type': vat_type
             }
@@ -143,7 +173,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     if receipt.get('Phone'):
         client_info['phone'] = receipt['Phone']
     
+    timestamp = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
+    
     atol_receipt = {
+        'timestamp': timestamp,
         'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
         'receipt': {
             'client': client_info,
