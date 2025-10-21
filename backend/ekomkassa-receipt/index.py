@@ -71,7 +71,9 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         'VatNo': 'none',
         'Vat0': 'vat0',
         'Vat10': 'vat10',
-        'Vat20': 'vat20'
+        'Vat20': 'vat20',
+        'CalculatedVat20120': 'vat20',
+        'CalculatedVat10110': 'vat10'
     }
     
     payment_method_mapping = {
@@ -162,10 +164,13 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     
     operation_mapping = {
         'Income': 'sell',
-        'IncomeReturn': 'sell_refund'
+        'IncomeReturn': 'sell_refund',
+        'IncomeCorrection': 'sell_correction',
+        'OutcomeCorrection': 'buy_correction'
     }
     
     operation = operation_mapping.get(ferma_request.get('Type', 'Income'), 'sell')
+    is_correction = operation in ['sell_correction', 'buy_correction']
     
     client_info = {}
     if receipt.get('Email'):
@@ -191,6 +196,20 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'total': sum(item['sum'] for item in atol_items)
         }
     }
+    
+    if is_correction:
+        correction_info = receipt.get('CorrectionInfo', {})
+        correction_type_mapping = {
+            'SELF': 'self',
+            'INSTRUCTION': 'instruction'
+        }
+        
+        atol_receipt['receipt']['correction'] = {
+            'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
+            'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
+            'base_number': correction_info.get('ReceiptId', '1'),
+            'base_name': correction_info.get('Description', 'Корректировка')
+        }
     
     if ferma_request.get('CallbackUrl'):
         atol_receipt['service'] = {

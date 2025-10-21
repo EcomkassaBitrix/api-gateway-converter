@@ -103,9 +103,55 @@ const Index = () => {
     }
   };
 
+  const exampleCorrectionRequest = {
+    "Request": {
+      "Inn": "0123456789",
+      "Type": "IncomeCorrection",
+      "InvoiceId": "test2_8744273567_u12",
+      "CallbackUrl": "https://webhook.site/0c01f3ef-597e-43d8-8463-4c1b942d3ea2",
+      "CustomerReceipt": {
+        "TaxationSystem": "Common",
+        "CashlessPayments": [
+          {
+            "PaymentSum": 1,
+            "PaymentMethodFlag": "1",
+            "PaymentIdentifiers": "132",
+            "AdditionalInformation": "Полная оплата безналичными"
+          }
+        ],
+        "Email": "example@mail.ru",
+        "Phone": null,
+        "CorrectionInfo": {
+          "Type": "SELF",
+          "Description": "Самостоятельная операция",
+          "ReceiptDate": "15.08.2019",
+          "ReceiptId": "1"
+        },
+        "Items": [
+          {
+            "Label": "Расходы",
+            "Price": 1,
+            "Quantity": 1,
+            "Amount": 1,
+            "Vat": "CalculatedVat20120",
+            "PaymentMethod": 4,
+            "Measure": "PIECE",
+            "PaymentType": 4
+          }
+        ]
+      }
+    },
+    "group_code": "700"
+  };
+
   const loadExample = () => {
     setFermaInput(JSON.stringify(exampleFermaRequest, null, 2));
-    toast.info('Загружен пример запроса');
+    toast.info('Загружен пример продажи');
+  };
+
+  const loadCorrectionExample = () => {
+    setFermaInput(JSON.stringify(exampleCorrectionRequest, null, 2));
+    toast.info('Загружен пример коррекции');
   };
 
   const handleAuth = async () => {
@@ -254,6 +300,7 @@ const Index = () => {
               isConverting={isConverting}
               handleConvert={handleConvert}
               loadExample={loadExample}
+              loadCorrectionExample={loadCorrectionExample}
             />
           </TabsContent>
 

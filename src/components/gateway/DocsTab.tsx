@@ -79,7 +79,15 @@ const DocsTab = () => {
               </span>
               <span className="block">
                 <Icon name="ExternalLink" size={12} className="inline mr-1" />
-                Возврат (refund): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/refund</code>
+                Возврат (sell_refund): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/sell_refund</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Коррекция прихода (sell_correction): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/sell_correction</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Коррекция расхода (buy_correction): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/buy_correction</code>
               </span>
               <span className="block">
                 <Icon name="Info" size={12} className="inline mr-1" />
@@ -124,12 +132,14 @@ const DocsTab = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold mb-2">Типы НДС:</h4>
+              <h4 className="text-sm font-semibold mb-2">Типы НДС (Ferma → eKomKassa):</h4>
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <span className="text-muted-foreground">vat20 → НДС 20%</span>
-                <span className="text-muted-foreground">vat10 → НДС 10%</span>
-                <span className="text-muted-foreground">vat0 → НДС 0%</span>
-                <span className="text-muted-foreground">none → Без НДС</span>
+                <span className="text-muted-foreground">VatNo → none (Без НДС)</span>
+                <span className="text-muted-foreground">Vat0 → vat0 (НДС 0%)</span>
+                <span className="text-muted-foreground">Vat10 → vat10 (НДС 10%)</span>
+                <span className="text-muted-foreground">Vat20 → vat20 (НДС 20%)</span>
+                <span className="text-muted-foreground">CalculatedVat10110 → vat10</span>
+                <span className="text-muted-foreground">CalculatedVat20120 → vat20</span>
               </div>
             </div>
 
@@ -144,11 +154,37 @@ const DocsTab = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold mb-2">Дополнительные параметры:</h4>
-              <div className="bg-muted p-3 rounded-lg font-mono text-xs">
+              <h4 className="text-sm font-semibold mb-2">Маппинг типов операций (Ferma → eKomKassa):</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                <span className="text-muted-foreground">Income → sell</span>
+                <span className="text-muted-foreground">IncomeReturn → sell_refund</span>
+                <span className="text-muted-foreground">IncomeCorrection → sell_correction</span>
+                <span className="text-muted-foreground">OutcomeCorrection → buy_correction</span>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Чеки коррекции (CorrectionInfo):</h4>
+              <div className="bg-muted p-3 rounded-lg font-mono text-xs mb-2">
                 <div className="space-y-1">
-                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Код группы ККТ (например: "700")</span></div>
+                  <div><span className="text-primary">Type</span>: "SELF" | "INSTRUCTION" <span className="text-muted-foreground">// Тип коррекции</span></div>
+                  <div><span className="text-primary">Description</span>: string <span className="text-muted-foreground">// Описание коррекции</span></div>
+                  <div><span className="text-primary">ReceiptDate</span>: string <span className="text-muted-foreground">// Дата документа (dd.MM.yyyy)</span></div>
+                  <div><span className="text-primary">ReceiptId</span>: string <span className="text-muted-foreground">// Номер документа</span></div>
                 </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Используется только для операций IncomeCorrection и OutcomeCorrection</p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-semibold mb-2">Единицы измерения (Measure → код):</h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <span className="text-muted-foreground">PIECE → 0 (штука)</span>
+                <span className="text-muted-foreground">KILOGRAM → 11 (кг)</span>
+                <span className="text-muted-foreground">METER → 22 (метр)</span>
+                <span className="text-muted-foreground">LITER → 41 (литр)</span>
+                <span className="text-muted-foreground">HOUR → 71 (час)</span>
+                <span className="text-muted-foreground">OTHER → 255 (другое)</span>
               </div>
             </div>
 

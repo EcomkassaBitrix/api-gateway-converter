@@ -10,6 +10,7 @@ interface SandboxTabProps {
   isConverting: boolean;
   handleConvert: () => void;
   loadExample: () => void;
+  loadCorrectionExample: () => void;
 }
 
 const SandboxTab = ({ 
@@ -18,7 +19,8 @@ const SandboxTab = ({
   atolOutput, 
   isConverting, 
   handleConvert, 
-  loadExample 
+  loadExample,
+  loadCorrectionExample 
 }: SandboxTabProps) => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
@@ -32,10 +34,16 @@ const SandboxTab = ({
               </CardTitle>
               <CardDescription>Введите запрос в формате Ferma</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={loadExample}>
-              <Icon name="Sparkles" size={14} className="mr-1" />
-              Пример
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={loadExample}>
+                <Icon name="Sparkles" size={14} className="mr-1" />
+                Продажа
+              </Button>
+              <Button variant="outline" size="sm" onClick={loadCorrectionExample}>
+                <Icon name="FileEdit" size={14} className="mr-1" />
+                Коррекция
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
