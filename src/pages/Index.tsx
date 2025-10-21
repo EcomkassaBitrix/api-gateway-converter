@@ -132,7 +132,7 @@ const Index = () => {
             </div>
             <h1 className="text-3xl font-bold text-secondary">API Gateway</h1>
           </div>
-          <p className="text-muted-foreground">Конвертация протокола Ferma в Атол Онлайн</p>
+          <p className="text-muted-foreground">Конвертация протокола Ferma в eKomKassa (Атол v5)</p>
         </header>
 
         <StatsCards statsData={statsData} />

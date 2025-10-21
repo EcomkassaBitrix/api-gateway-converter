@@ -69,9 +69,9 @@ const SandboxTab = ({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Icon name="Code2" size={20} />
-            Атол Output
+            eKomKassa Output
           </CardTitle>
-          <CardDescription>Результат конвертации в формат Атол</CardDescription>
+          <CardDescription>Результат конвертации в формат eKomKassa (Атол v5)</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea

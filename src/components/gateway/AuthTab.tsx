@@ -75,9 +75,9 @@ const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAut
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Icon name="Shield" size={20} />
-            Атол getToken
+            eKomKassa Token
           </CardTitle>
-          <CardDescription>Результат конвертации в формат Атол Онлайн</CardDescription>
+          <CardDescription>Результат конвертации в формат eKomKassa (Атол v5)</CardDescription>
         </CardHeader>
         <CardContent>
           {authToken ? (
@@ -124,7 +124,10 @@ const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAut
                   <Icon name="Info" size={16} className="text-blue-500 mt-0.5" />
                   <div className="text-xs text-blue-700 dark:text-blue-300">
                     <p className="font-medium mb-1">Использование токена:</p>
-                    <p>Токен действителен 24 часа. Используйте его в заголовке <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">Token: {'{token}'}</code> при запросах к Атол API</p>
+                    <p className="mb-2">Токен действителен 24 часа. Используйте его в заголовке <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">Token: {'{token}'}</code></p>
+                    <p className="text-xs opacity-75">
+                      API: <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-[10px]">https://app.ecomkassa.ru/fiscalorder/v5/</code>
+                    </p>
                   </div>
                 </div>
               </div>
