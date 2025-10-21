@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "Get all logs",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Get logs with limit",
+      "method": "GET",
+      "path": "/?limit=10",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Filter by function name",
+      "method": "GET",
+      "path": "/?function_name=ekomkassa-auth",
+      "expectedStatus": 200
+    }
+  ]
+}

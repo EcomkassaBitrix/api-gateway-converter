@@ -1,6 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
+import { useNavigate } from 'react-router-dom';
 
 interface LogEntry {
   id: number;
@@ -15,14 +17,24 @@ interface LogsTabProps {
 }
 
 const LogsTab = ({ recentLogs }: LogsTabProps) => {
+  const navigate = useNavigate();
+  
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Icon name="FileText" size={20} />
-          Последние запросы
-        </CardTitle>
-        <CardDescription>История конвертации в реальном времени</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="FileText" size={20} />
+              Последние запросы
+            </CardTitle>
+            <CardDescription>История конвертации в реальном времени</CardDescription>
+          </div>
+          <Button onClick={() => navigate('/logs')} variant="outline" className="gap-2">
+            <Icon name="ExternalLink" size={16} />
+            Открыть полные логи
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
