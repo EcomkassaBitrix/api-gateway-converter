@@ -160,6 +160,8 @@ const DocsTab = () => {
                 <span className="text-muted-foreground">IncomeReturn → sell_refund</span>
                 <span className="text-muted-foreground">IncomeCorrection → sell_correction</span>
                 <span className="text-muted-foreground">OutcomeCorrection → buy_correction</span>
+                <span className="text-muted-foreground">IncomeReturnCorrection → sell_refund_correction</span>
+                <span className="text-muted-foreground">OutcomeReturnCorrection → buy_refund_correction</span>
               </div>
             </div>
 

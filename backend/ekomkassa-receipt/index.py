@@ -166,11 +166,13 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         'Income': 'sell',
         'IncomeReturn': 'sell_refund',
         'IncomeCorrection': 'sell_correction',
-        'OutcomeCorrection': 'buy_correction'
+        'OutcomeCorrection': 'buy_correction',
+        'IncomeReturnCorrection': 'sell_refund_correction',
+        'OutcomeReturnCorrection': 'buy_refund_correction'
     }
     
     operation = operation_mapping.get(ferma_request.get('Type', 'Income'), 'sell')
-    is_correction = operation in ['sell_correction', 'buy_correction']
+    is_correction = operation in ['sell_correction', 'buy_correction', 'sell_refund_correction', 'buy_refund_correction']
     
     client_info = {}
     if receipt.get('Email'):
