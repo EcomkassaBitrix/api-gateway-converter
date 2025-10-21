@@ -168,9 +168,11 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         'Outcome': 'buy',
         'OutcomeReturn': 'buy_refund',
         'IncomeCorrection': 'sell_correction',
+        'SellCorrection': 'sell_correction',
         'OutcomeCorrection': 'buy_correction',
         'BuyCorrection': 'buy_correction',
         'IncomeReturnCorrection': 'sell_refund_correction',
+        'SellRefundCorrection': 'sell_refund_correction',
         'OutcomeReturnCorrection': 'buy_refund_correction',
         'BuyRefundCorrection': 'buy_refund_correction'
     }
