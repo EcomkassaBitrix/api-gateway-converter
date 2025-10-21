@@ -204,7 +204,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'INSTRUCTION': 'instruction'
         }
         
-        atol_receipt['receipt']['correction'] = {
+        atol_receipt['correction'] = {
             'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
             'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
             'base_number': correction_info.get('ReceiptId', '1'),
