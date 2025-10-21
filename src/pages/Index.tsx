@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import funcUrls from '../../backend/func2url.json';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
@@ -40,50 +41,44 @@ const Index = () => {
   };
 
   const handleConvert = async () => {
+    if (!authToken) {
+      toast.error('Сначала получите токен авторизации');
+      return;
+    }
+    
     setIsConverting(true);
     
-    setTimeout(() => {
-      const mockAtolResponse = {
-        "external_id": "order_12345",
-        "receipt": {
-          "client": {
-            "email": "customer@example.com"
-          },
-          "company": {
-            "email": "shop@example.com",
-            "sno": "osn",
-            "inn": "1234567890",
-            "payment_address": "https://example.com"
-          },
-          "items": [
-            {
-              "name": "Товар 1",
-              "price": 100.50,
-              "quantity": 2,
-              "sum": 201.00,
-              "payment_method": "full_payment",
-              "payment_object": "commodity",
-              "vat": {
-                "type": "vat20",
-                "sum": 33.50
-              }
-            }
-          ],
-          "payments": [
-            {
-              "type": 1,
-              "sum": 201.00
-            }
-          ],
-          "total": 201.00
-        },
-        "timestamp": new Date().toISOString()
-      };
+    try {
+      const fermaData = JSON.parse(fermaInput);
       
-      setAtolOutput(JSON.stringify(mockAtolResponse, null, 2));
+      const response = await fetch(funcUrls['ekomkassa-receipt'], {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...fermaData,
+          token: authToken,
+          group_code: '700'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setAtolOutput(JSON.stringify(data, null, 2));
+        toast.success('Чек успешно создан');
+      } else {
+        setAtolOutput(JSON.stringify(data, null, 2));
+        const errorMsg = data.error?.text || data.error || 'Ошибка создания чека';
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      toast.error('Ошибка парсинга или связи');
+      console.error('Convert error:', error);
+    } finally {
       setIsConverting(false);
-      toast.success('Конвертация успешно выполнена');
-    }, 800);
+    }
   };
 
   const loadExample = () => {
@@ -94,18 +89,33 @@ const Index = () => {
   const handleAuth = async () => {
     setIsAuthenticating(true);
     
-    setTimeout(() => {
-      const mockAtolToken = {
-        "code": 0,
-        "text": "",
-        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkF0b2wgVG9rZW4iLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-        "timestamp": new Date().toISOString()
-      };
+    try {
+      const response = await fetch(funcUrls['ekomkassa-auth'], {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          login: authForm.login,
+          password: authForm.password
+        })
+      });
       
-      setAuthToken(mockAtolToken.token);
+      const data = await response.json();
+      
+      if (response.ok && data.token) {
+        setAuthToken(data.token);
+        toast.success('Токен успешно получен');
+      } else {
+        const errorMsg = data.error?.text || data.error || 'Ошибка авторизации';
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      toast.error('Ошибка связи с сервером');
+      console.error('Auth error:', error);
+    } finally {
       setIsAuthenticating(false);
-      toast.success('Токен успешно получен');
-    }, 600);
+    }
   };
 
   const statsData = [

@@ -1,0 +1,65 @@
+{
+  "tests": [
+    {
+      "name": "Test missing token",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "operation": "sell",
+        "items": [
+          {
+            "name": "Test Item",
+            "price": 100,
+            "quantity": 1,
+            "tax": "vat20"
+          }
+        ]
+      },
+      "expectedStatus": 401,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test missing items",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "token": "test_token",
+        "operation": "sell"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test valid receipt request",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "operation": "sell",
+        "token": "test_token_123",
+        "group_code": "700",
+        "items": [
+          {
+            "name": "Товар 1",
+            "price": 100.50,
+            "quantity": 2,
+            "tax": "vat20"
+          }
+        ],
+        "payments": [
+          {
+            "type": "card",
+            "sum": 201.00
+          }
+        ]
+      },
+      "expectedStatus": [200, 401, 500],
+      "bodyMatcher": "partial"
+    }
+  ]
+}

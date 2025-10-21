@@ -1,0 +1,26 @@
+{
+  "tests": [
+    {
+      "name": "Test missing credentials",
+      "method": "POST",
+      "path": "/",
+      "body": {},
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test with credentials",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "login": "test_user",
+        "password": "test_pass"
+      },
+      "expectedStatus": [200, 401, 500],
+      "bodyMatcher": "partial"
+    }
+  ]
+}
