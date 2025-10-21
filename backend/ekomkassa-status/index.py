@@ -1,6 +1,10 @@
 import json
 import requests
+import logging
 from typing import Dict, Any
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -38,6 +42,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     group_code = params.get('group_code', '700')
     uuid = params.get('uuid')
     
+    logger.info(f"[STATUS] Incoming request: uuid={uuid}, group_code={group_code}, token={'***' if auth_token else None}")
+    
     if not auth_token:
         return {
             'statusCode': 400,
@@ -56,6 +62,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     
     ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}'
     
+    logger.info(f"[STATUS] Request to eKomKassa: {ekomkassa_url}")
+    
     try:
         response = requests.get(
             ekomkassa_url,
@@ -66,6 +74,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             timeout=10
         )
         
+        logger.info(f"[STATUS] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
         return {
             'statusCode': response.status_code,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -73,6 +83,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        logger.error(f"[STATUS] eKomKassa API error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},

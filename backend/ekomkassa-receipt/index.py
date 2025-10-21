@@ -1,7 +1,11 @@
 import json
 import requests
+import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -36,6 +40,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
     
     body_data = json.loads(event.get('body', '{}'))
+    
+    logger.info(f"[RECEIPT] Incoming request: {json.dumps(body_data, ensure_ascii=False)}")
     
     ferma_request = body_data.get('Request')
     
@@ -241,6 +247,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
+    logger.info(f"[RECEIPT-FERMA] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    
     try:
         response = requests.post(
             endpoint,
@@ -252,6 +260,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             timeout=15
         )
         
+        logger.info(f"[RECEIPT-FERMA] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
         return {
             'statusCode': response.status_code,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -259,6 +269,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        logger.error(f"[RECEIPT-FERMA] eKomKassa API error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -351,6 +362,8 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
     
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
+    logger.info(f"[RECEIPT-SIMPLE] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    
     try:
         response = requests.post(
             endpoint,
@@ -362,6 +375,8 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
             timeout=15
         )
         
+        logger.info(f"[RECEIPT-SIMPLE] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
         return {
             'statusCode': response.status_code,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -369,6 +384,7 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        logger.error(f"[RECEIPT-SIMPLE] eKomKassa API error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
