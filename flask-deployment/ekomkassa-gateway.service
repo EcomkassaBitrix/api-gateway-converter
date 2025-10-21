@@ -1,0 +1,25 @@
+[Unit]
+Description=eKomKassa Gateway Service
+After=network.target postgresql.service
+
+[Service]
+Type=notify
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/ekomkassa-gateway
+Environment="DATABASE_URL=postgresql://logger_user:postgres@localhost:5432/ekomkassa_logs"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/var/www/ekomkassa-gateway/venv/bin/gunicorn \
+    --bind 127.0.0.1:5000 \
+    --workers 4 \
+    --timeout 30 \
+    --access-logfile /var/log/ekomkassa-gateway/access.log \
+    --error-logfile /var/log/ekomkassa-gateway/error.log \
+    --log-level info \
+    app:app
+
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
