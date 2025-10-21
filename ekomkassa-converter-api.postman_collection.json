@@ -1,0 +1,555 @@
+{
+	"info": {
+		"_postman_id": "ferma-to-ekomkassa-converter",
+		"name": "Ferma → eKomKassa Converter API",
+		"description": "Полная коллекция для тестирования конвертера Ferma API в eKomKassa (Атол v5).\n\nБазовые URL функций:\n- Auth: https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0\n- Receipt: https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005\n- Status: https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authorization",
+			"item": [
+				{
+					"name": "POST /api/Authorization/CreateAuthToken - Success",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 401\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response has uuid\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('uuid');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"auth_token\", jsonData.data?.token || \"\");",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"login\": \"{{ekomkassa_login}}\",\n  \"password\": \"{{ekomkassa_password}}\"\n}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0/api/Authorization/CreateAuthToken",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"b9da35cd-e700-4dba-bd0a-275e029345e0",
+								"api",
+								"Authorization",
+								"CreateAuthToken"
+							]
+						},
+						"description": "Получение токена авторизации eKomKassa через Ferma-совместимый API"
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/Authorization/CreateAuthToken - Missing Credentials",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response has error\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0/api/Authorization/CreateAuthToken",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"b9da35cd-e700-4dba-bd0a-275e029345e0",
+								"api",
+								"Authorization",
+								"CreateAuthToken"
+							]
+						},
+						"description": "Тест отсутствия логина и пароля"
+					},
+					"response": []
+				}
+			],
+			"description": "Методы авторизации в eKomKassa через Ferma-совместимый API"
+		},
+		{
+			"name": "2. Receipt Creation",
+			"item": [
+				{
+					"name": "POST /api/kkt/cloud/receipt - Sell Receipt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200, 401 or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response has uuid\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('uuid');",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"receipt_uuid\", jsonData.uuid);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Request\": {\n    \"Type\": \"sell\",\n    \"AuthToken\": \"{{auth_token}}\",\n    \"CustomerReceipt\": {\n      \"TaxationSystem\": 1,\n      \"Email\": \"test@example.com\",\n      \"Items\": [\n        {\n          \"Label\": \"Товар 1\",\n          \"Price\": 100.00,\n          \"Quantity\": 2,\n          \"Amount\": 200.00,\n          \"Tax\": 1,\n          \"PaymentMethod\": 4,\n          \"PaymentObject\": 1\n        },\n        {\n          \"Label\": \"Товар 2\",\n          \"Price\": 50.50,\n          \"Quantity\": 1,\n          \"Amount\": 50.50,\n          \"Tax\": 1,\n          \"PaymentMethod\": 4,\n          \"PaymentObject\": 1\n        }\n      ],\n      \"Payments\": [\n        {\n          \"Type\": 1,\n          \"Sum\": 250.50\n        }\n      ]\n    }\n  },\n  \"group_code\": \"{{group_code}}\"\n}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005/api/kkt/cloud/receipt",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"280868cd-939a-438a-8138-b54195ce8005",
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание чека продажи (полный Ferma формат)"
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/kkt/cloud/receipt - Simplified Format",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200, 401 or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 401, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response has uuid\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('uuid');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"operation\": \"sell\",\n  \"token\": \"{{auth_token}}\",\n  \"group_code\": \"{{group_code}}\",\n  \"email\": \"customer@example.com\",\n  \"items\": [\n    {\n      \"name\": \"Кофе Латте\",\n      \"price\": 150.00,\n      \"quantity\": 2,\n      \"tax\": \"vat20\"\n    },\n    {\n      \"name\": \"Круассан\",\n      \"price\": 80.00,\n      \"quantity\": 1,\n      \"tax\": \"vat10\"\n    }\n  ],\n  \"payments\": [\n    {\n      \"type\": \"card\",\n      \"sum\": 380.00\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005/api/kkt/cloud/receipt",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"280868cd-939a-438a-8138-b54195ce8005",
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание чека продажи (упрощенный формат)"
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/kkt/cloud/receipt - Missing Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response has error\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"operation\": \"sell\",\n  \"items\": [\n    {\n      \"name\": \"Test Item\",\n      \"price\": 100,\n      \"quantity\": 1,\n      \"tax\": \"vat20\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005/api/kkt/cloud/receipt",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"280868cd-939a-438a-8138-b54195ce8005",
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Тест отсутствия токена авторизации"
+					},
+					"response": []
+				},
+				{
+					"name": "POST /api/kkt/cloud/receipt - Missing Items",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response has error\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('error');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"test_token\",\n  \"operation\": \"sell\"\n}"
+						},
+						"url": {
+							"raw": "https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005/api/kkt/cloud/receipt",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"280868cd-939a-438a-8138-b54195ce8005",
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Тест отсутствия товаров в чеке"
+					},
+					"response": []
+				}
+			],
+			"description": "Методы создания фискальных чеков через Ferma-совместимый API"
+		},
+		{
+			"name": "3. Receipt Status",
+			"item": [
+				{
+					"name": "GET /api/kkt/cloud/status - Get Status",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200, 400 or 500\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 400, 500]);",
+									"});",
+									"",
+									"pm.test(\"Response has uuid\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('uuid');",
+									"});",
+									"",
+									"pm.test(\"Response has status field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a/api/kkt/cloud/status?uuid={{receipt_uuid}}&AuthToken={{auth_token}}&group_code={{group_code}}",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a",
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "{{receipt_uuid}}"
+								},
+								{
+									"key": "AuthToken",
+									"value": "{{auth_token}}"
+								},
+								{
+									"key": "group_code",
+									"value": "{{group_code}}"
+								}
+							]
+						},
+						"description": "Получение статуса чека по UUID"
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/kkt/cloud/status - Missing AuthToken",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response has error about AuthToken\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.include('AuthToken');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a/api/kkt/cloud/status?uuid=test-uuid-123",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a",
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "test-uuid-123"
+								}
+							]
+						},
+						"description": "Тест отсутствия токена авторизации"
+					},
+					"response": []
+				},
+				{
+					"name": "GET /api/kkt/cloud/status - Missing uuid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response has error about uuid\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.include('uuid');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a/api/kkt/cloud/status?AuthToken=test-token",
+							"protocol": "https",
+							"host": [
+								"functions",
+								"poehali",
+								"dev"
+							],
+							"path": [
+								"cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a",
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "AuthToken",
+									"value": "test-token"
+								}
+							]
+						},
+						"description": "Тест отсутствия UUID чека"
+					},
+					"response": []
+				}
+			],
+			"description": "Методы проверки статуса чеков через Ferma-совместимый API"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "auth_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "receipt_uuid",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "ekomkassa_login",
+			"value": "YOUR_LOGIN_HERE",
+			"type": "string"
+		},
+		{
+			"key": "ekomkassa_password",
+			"value": "YOUR_PASSWORD_HERE",
+			"type": "string"
+		},
+		{
+			"key": "group_code",
+			"value": "700",
+			"type": "string"
+		}
+	]
+}
