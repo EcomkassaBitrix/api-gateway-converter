@@ -1,11 +1,48 @@
 import json
 import requests
 import logging
+import os
+import time
+import psycopg2
 from typing import Dict, Any, Optional
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def log_to_db(function_name: str, log_level: str, message: str, 
+              request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
+              request_id: Optional[str] = None, duration_ms: Optional[int] = None,
+              status_code: Optional[int] = None) -> None:
+    '''Write log entry to database'''
+    try:
+        db_url = os.environ.get('DATABASE_URL')
+        if not db_url:
+            return
+        
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        
+        cur.execute(
+            "INSERT INTO logs (function_name, log_level, message, request_data, response_data, request_id, duration_ms, status_code) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                function_name,
+                log_level,
+                message,
+                json.dumps(request_data) if request_data else None,
+                json.dumps(response_data) if response_data else None,
+                request_id,
+                duration_ms,
+                status_code
+            )
+        )
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to write log to DB: {str(e)}")
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -16,6 +53,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Request: Ferma receipt format with Request.CustomerReceipt
     Response: eKomKassa receipt creation response
     '''
+    start_time = time.time()
+    request_id = getattr(context, 'request_id', None)
     method: str = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
@@ -42,18 +81,21 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     body_data = json.loads(event.get('body', '{}'))
     
     logger.info(f"[RECEIPT] Incoming request: {json.dumps(body_data, ensure_ascii=False)}")
+    log_to_db('ekomkassa-receipt', 'INFO', 'Incoming receipt request',
+              request_data=body_data,
+              request_id=request_id)
     
     ferma_request = body_data.get('Request')
     
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), body_data.get('group_code', '700'), context)
+        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), body_data.get('group_code', '700'), context, start_time, request_id)
     else:
-        result = convert_simple_format(body_data, context)
+        result = convert_simple_format(body_data, context, start_time, request_id)
     
     return result
 
 
-def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, context: Any) -> Dict[str, Any]:
+def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
     if not token:
@@ -248,6 +290,9 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
     logger.info(f"[RECEIPT-FERMA] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    log_to_db('ekomkassa-receipt', 'INFO', 'Sending Ferma format receipt to eKomKassa',
+              request_data={'endpoint': endpoint, 'payload': atol_receipt},
+              request_id=request_id)
     
     try:
         response = requests.post(
@@ -260,7 +305,20 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             timeout=15
         )
         
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-FERMA] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
+        try:
+            response_json = response.json()
+        except:
+            response_json = {'raw': response.text}
+        
+        log_to_db('ekomkassa-receipt', 'INFO', 'eKomKassa Ferma receipt response received',
+                  request_data={'endpoint': endpoint},
+                  response_data=response_json,
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=response.status_code)
         
         return {
             'statusCode': response.status_code,
@@ -269,7 +327,13 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[RECEIPT-FERMA] eKomKassa API error: {str(e)}")
+        log_to_db('ekomkassa-receipt', 'ERROR', f'eKomKassa API error (Ferma): {str(e)}',
+                  request_data={'endpoint': endpoint},
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=500)
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -278,7 +342,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
 
 
-def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def convert_simple_format(body_data: Dict[str, Any], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
     '''Конвертация упрощенного формата (для обратной совместимости)'''
     
     operation = body_data.get('operation', 'sell')
@@ -363,6 +427,9 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
     logger.info(f"[RECEIPT-SIMPLE] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    log_to_db('ekomkassa-receipt', 'INFO', 'Sending simple format receipt to eKomKassa',
+              request_data={'endpoint': endpoint, 'payload': atol_receipt},
+              request_id=request_id)
     
     try:
         response = requests.post(
@@ -375,7 +442,20 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
             timeout=15
         )
         
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-SIMPLE] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
+        try:
+            response_json = response.json()
+        except:
+            response_json = {'raw': response.text}
+        
+        log_to_db('ekomkassa-receipt', 'INFO', 'eKomKassa simple receipt response received',
+                  request_data={'endpoint': endpoint},
+                  response_data=response_json,
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=response.status_code)
         
         return {
             'statusCode': response.status_code,
@@ -384,7 +464,13 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any) -> Dict[str, 
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[RECEIPT-SIMPLE] eKomKassa API error: {str(e)}")
+        log_to_db('ekomkassa-receipt', 'ERROR', f'eKomKassa API error (Simple): {str(e)}',
+                  request_data={'endpoint': endpoint},
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=500)
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},

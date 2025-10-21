@@ -1,10 +1,47 @@
 import json
 import requests
 import logging
-from typing import Dict, Any
+import os
+import time
+import psycopg2
+from typing import Dict, Any, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def log_to_db(function_name: str, log_level: str, message: str, 
+              request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
+              request_id: Optional[str] = None, duration_ms: Optional[int] = None,
+              status_code: Optional[int] = None) -> None:
+    '''Write log entry to database'''
+    try:
+        db_url = os.environ.get('DATABASE_URL')
+        if not db_url:
+            return
+        
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+        
+        cur.execute(
+            "INSERT INTO logs (function_name, log_level, message, request_data, response_data, request_id, duration_ms, status_code) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                function_name,
+                log_level,
+                message,
+                json.dumps(request_data) if request_data else None,
+                json.dumps(response_data) if response_data else None,
+                request_id,
+                duration_ms,
+                status_code
+            )
+        )
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to write log to DB: {str(e)}")
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
@@ -14,6 +51,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Target: https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}
     Response: eKomKassa status response
     '''
+    start_time = time.time()
+    request_id = getattr(context, 'request_id', None)
     method: str = event.get('httpMethod', 'GET')
     
     if method == 'OPTIONS':
@@ -43,6 +82,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     uuid = params.get('uuid')
     
     logger.info(f"[STATUS] Incoming request: uuid={uuid}, group_code={group_code}, token={'***' if auth_token else None}")
+    log_to_db('ekomkassa-status', 'INFO', 'Incoming status check request',
+              request_data={'uuid': uuid, 'group_code': group_code, 'has_token': bool(auth_token)},
+              request_id=request_id)
     
     if not auth_token:
         return {
@@ -74,7 +116,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             timeout=10
         )
         
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[STATUS] Response from eKomKassa: status={response.status_code}, body={response.text}")
+        
+        try:
+            response_json = response.json()
+        except:
+            response_json = {'raw': response.text}
+        
+        log_to_db('ekomkassa-status', 'INFO', 'eKomKassa status response received',
+                  request_data={'uuid': uuid, 'group_code': group_code},
+                  response_data=response_json,
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=response.status_code)
         
         return {
             'statusCode': response.status_code,
@@ -83,7 +138,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
+        duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[STATUS] eKomKassa API error: {str(e)}")
+        log_to_db('ekomkassa-status', 'ERROR', f'eKomKassa API error: {str(e)}',
+                  request_data={'uuid': uuid, 'group_code': group_code},
+                  request_id=request_id,
+                  duration_ms=duration_ms,
+                  status_code=500)
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
