@@ -16,8 +16,7 @@ const Index = () => {
   
   const [authForm, setAuthForm] = useState({
     login: '',
-    password: '',
-    groupCode: ''
+    password: ''
   });
   const [authToken, setAuthToken] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);

@@ -10,7 +10,6 @@ interface AuthTabProps {
   authForm: {
     login: string;
     password: string;
-    groupCode: string;
   };
   setAuthForm: (form: any) => void;
   authToken: string;
@@ -50,22 +49,6 @@ const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAut
               value={authForm.password}
               onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
             />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="groupCode">
-              Код группы <span className="text-muted-foreground text-xs">(опционально для Атол)</span>
-            </Label>
-            <Input
-              id="groupCode"
-              type="text"
-              placeholder="group_code"
-              value={authForm.groupCode}
-              onChange={(e) => setAuthForm({ ...authForm, groupCode: e.target.value })}
-            />
-            <p className="text-xs text-muted-foreground">
-              Код группы из личного кабинета Атол Онлайн
-            </p>
           </div>
 
           <Button 

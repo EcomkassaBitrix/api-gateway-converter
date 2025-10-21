@@ -39,7 +39,6 @@ const DocsTab = () => {
                 <div className="space-y-1">
                   <div><span className="text-primary">login</span>: string <span className="text-muted-foreground">// Из Ferma</span></div>
                   <div><span className="text-primary">pass</span>: string <span className="text-muted-foreground">// password из Ferma</span></div>
-                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, из ЛК Атол</span></div>
                 </div>
               </div>
             </div>
