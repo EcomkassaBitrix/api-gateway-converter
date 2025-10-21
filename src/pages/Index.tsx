@@ -31,22 +31,41 @@ const Index = () => {
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
 
   const exampleFermaRequest = {
-    "operation": "sell",
-    "group_code": "700",
-    "items": [
-      {
-        "name": "Товар 1",
-        "price": 100.50,
-        "quantity": 2,
-        "tax": "vat20"
+    "Request": {
+      "Inn": "0123456789",
+      "Type": "Income",
+      "InvoiceId": "6f000fee-bbac-4444-bda1-e9ce9999fcc7",
+      "CallbackUrl": "https://webhook.site/0c01f3ef-597e-43d8-8463-4c1b942d3ea2",
+      "CustomerReceipt": {
+        "TaxationSystem": "Common",
+        "CashlessPayments": [
+          {
+            "PaymentSum": 5328.53,
+            "PaymentMethodFlag": "1",
+            "PaymentIdentifiers": "132",
+            "AdditionalInformation": "Полная оплата безналичными"
+          }
+        ],
+        "Email": "example@ya.ru",
+        "Phone": "+79000000001",
+        "PaymentType": 4,
+        "Items": [
+          {
+            "Label": "Оплата услуг по страхованию.",
+            "Price": 5328.53,
+            "Quantity": 1.0,
+            "Amount": 5328.53,
+            "Vat": "VatNo",
+            "MarkingCode": null,
+            "PaymentMethod": 4,
+            "Measure": "PIECE"
+          }
+        ],
+        "PaymentItems": null,
+        "CustomUserProperty": null
       }
-    ],
-    "payments": [
-      {
-        "type": "card",
-        "sum": 201.00
-      }
-    ]
+    },
+    "group_code": "700"
   };
 
   const handleConvert = async () => {
