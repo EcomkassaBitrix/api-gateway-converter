@@ -4,6 +4,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
@@ -11,6 +13,14 @@ const Index = () => {
   const [fermaInput, setFermaInput] = useState('');
   const [atolOutput, setAtolOutput] = useState('');
   const [isConverting, setIsConverting] = useState(false);
+  
+  const [authForm, setAuthForm] = useState({
+    login: '',
+    password: '',
+    groupCode: ''
+  });
+  const [authToken, setAuthToken] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const exampleFermaRequest = {
     "operation": "sell",
@@ -82,6 +92,23 @@ const Index = () => {
     toast.info('Загружен пример запроса');
   };
 
+  const handleAuth = async () => {
+    setIsAuthenticating(true);
+    
+    setTimeout(() => {
+      const mockAtolToken = {
+        "code": 0,
+        "text": "",
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkF0b2wgVG9rZW4iLCJpYXQiOjE1MTYyMzkwMjJ9.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+        "timestamp": new Date().toISOString()
+      };
+      
+      setAuthToken(mockAtolToken.token);
+      setIsAuthenticating(false);
+      toast.success('Токен успешно получен');
+    }, 600);
+  };
+
   const statsData = [
     { label: 'Всего запросов', value: '1,247', icon: 'Activity', trend: '+12%' },
     { label: 'Успешных', value: '1,198', icon: 'CheckCircle2', trend: '+8%' },
@@ -124,8 +151,12 @@ const Index = () => {
           ))}
         </div>
 
-        <Tabs defaultValue="sandbox" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+        <Tabs defaultValue="auth" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="auth" className="gap-2">
+              <Icon name="KeyRound" size={16} />
+              Авторизация
+            </TabsTrigger>
             <TabsTrigger value="sandbox" className="gap-2">
               <Icon name="PlayCircle" size={16} />
               Песочница
@@ -143,6 +174,149 @@ const Index = () => {
               Аналитика
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="auth" className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Lock" size={20} />
+                    Ferma AuthToken
+                  </CardTitle>
+                  <CardDescription>Запрос токена авторизации в формате Ferma</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login">Логин</Label>
+                    <Input
+                      id="login"
+                      type="text"
+                      placeholder="your_login"
+                      value={authForm.login}
+                      onChange={(e) => setAuthForm({ ...authForm, login: e.target.value })}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={authForm.password}
+                      onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="groupCode">
+                      Код группы <span className="text-muted-foreground text-xs">(опционально для Атол)</span>
+                    </Label>
+                    <Input
+                      id="groupCode"
+                      type="text"
+                      placeholder="group_code"
+                      value={authForm.groupCode}
+                      onChange={(e) => setAuthForm({ ...authForm, groupCode: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Код группы из личного кабинета Атол Онлайн
+                    </p>
+                  </div>
+
+                  <Button 
+                    onClick={handleAuth}
+                    disabled={!authForm.login || !authForm.password || isAuthenticating}
+                    className="w-full mt-4"
+                  >
+                    {isAuthenticating ? (
+                      <>
+                        <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                        Получение токена...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="Key" size={16} className="mr-2" />
+                        Получить токен
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="Shield" size={20} />
+                    Атол getToken
+                  </CardTitle>
+                  <CardDescription>Результат конвертации в формат Атол Онлайн</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {authToken ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-muted rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Icon name="CheckCircle2" size={16} className="text-green-500" />
+                          <span className="text-sm font-medium">Токен получен</span>
+                        </div>
+                        <Textarea
+                          value={JSON.stringify({
+                            code: 0,
+                            text: "",
+                            token: authToken
+                          }, null, 2)}
+                          readOnly
+                          className="font-mono text-xs min-h-[200px] bg-background"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Access Token</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            value={authToken}
+                            readOnly
+                            className="font-mono text-xs"
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="icon"
+                            onClick={() => {
+                              navigator.clipboard.writeText(authToken);
+                              toast.success('Токен скопирован');
+                            }}
+                          >
+                            <Icon name="Copy" size={16} />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-start gap-2">
+                          <Icon name="Info" size={16} className="text-blue-500 mt-0.5" />
+                          <div className="text-xs text-blue-700 dark:text-blue-300">
+                            <p className="font-medium mb-1">Использование токена:</p>
+                            <p>Токен действителен 24 часа. Используйте его в заголовке <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded">Token: {'{token}'}</code> при запросах к Атол API</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+                      <div className="p-4 bg-muted rounded-full mb-4">
+                        <Icon name="KeyRound" size={32} className="text-muted-foreground" />
+                      </div>
+                      <h3 className="font-semibold mb-2">Токен не получен</h3>
+                      <p className="text-sm text-muted-foreground max-w-sm">
+                        Введите учетные данные слева и нажмите "Получить токен" для авторизации
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="sandbox" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
@@ -224,8 +398,52 @@ const Index = () => {
                 </CardTitle>
                 <CardDescription>Полное описание эндпоинтов и параметров конвертации</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-8">
                 <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Badge variant="default">POST</Badge>
+                    <code className="text-sm">/api/auth/token</code>
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Получение токена авторизации (Ferma AuthToken → Атол getToken)
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Параметры Ferma:</h4>
+                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
+                        <div className="space-y-1">
+                          <div><span className="text-primary">login</span>: string <span className="text-muted-foreground">// Обязательно</span></div>
+                          <div><span className="text-primary">password</span>: string <span className="text-muted-foreground">// Обязательно</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Параметры Атол (конвертация):</h4>
+                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
+                        <div className="space-y-1">
+                          <div><span className="text-primary">login</span>: string <span className="text-muted-foreground">// Из Ferma</span></div>
+                          <div><span className="text-primary">pass</span>: string <span className="text-muted-foreground">// password из Ferma</span></div>
+                          <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, из ЛК Атол</span></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">Ответ Атол:</h4>
+                      <div className="bg-muted p-3 rounded-lg font-mono text-xs">
+                        {'{'}<br />
+                        &nbsp;&nbsp;<span className="text-primary">"code"</span>: 0,<br />
+                        &nbsp;&nbsp;<span className="text-primary">"text"</span>: "",<br />
+                        &nbsp;&nbsp;<span className="text-primary">"token"</span>: "eyJhbGc..."<br />
+                        {'}'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <Badge variant="default">POST</Badge>
                     <code className="text-sm">/api/convert/ferma-to-atol</code>
