@@ -94,7 +94,7 @@ const DocsTab = () => {
               <div className="bg-muted p-3 rounded-lg font-mono text-xs mb-4">
                 <div className="space-y-1">
                   <div><span className="text-primary">operation</span>: string <span className="text-muted-foreground">// "sell" | "refund" | "sell_correction" | "refund_correction"</span></div>
-                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, код группы ККТ (по умолчанию "700")</span></div>
+                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Обязательно, код группы ККТ (например: "700")</span></div>
                   <div><span className="text-primary">items</span>: array <span className="text-muted-foreground">// Массив товаров</span></div>
                   <div><span className="text-primary">payments</span>: array <span className="text-muted-foreground">// Массив платежей</span></div>
                 </div>
