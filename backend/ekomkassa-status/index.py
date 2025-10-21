@@ -4,10 +4,11 @@ from typing import Dict, Any
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Конвертация Ferma Status в eKomKassa report
-    Args: event - dict с httpMethod, queryStringParameters (AuthToken, group_code, uuid)
-          context - объект с request_id, function_name
-    Returns: HTTP response со статусом чека из eKomKassa
+    Business: Ferma-совместимый API для получения статуса чека
+    Ferma URL: GET https://ferma.ofd.ru/api/kkt/cloud/status?uuid={uuid}&AuthToken={token}
+    Gateway URL: GET https://{gateway}/api/kkt/cloud/status?uuid={uuid}&AuthToken={token}
+    Target: https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}
+    Response: eKomKassa status response
     '''
     method: str = event.get('httpMethod', 'GET')
     

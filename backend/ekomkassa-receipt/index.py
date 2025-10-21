@@ -5,10 +5,12 @@ from datetime import datetime
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Конвертация Ferma API receipt в eKomKassa (Атол v5)
-    Args: event - dict с httpMethod, body (полный Ferma Request или упрощенный формат)
-          context - объект с request_id, function_name
-    Returns: HTTP response с результатом создания чека
+    Business: Ferma-совместимый API для создания чеков
+    Ferma URL: POST https://ferma.ofd.ru/api/kkt/cloud/receipt
+    Gateway URL: POST https://{gateway}/api/kkt/cloud/receipt
+    Target: https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}
+    Request: Ferma receipt format with Request.CustomerReceipt
+    Response: eKomKassa receipt creation response
     '''
     method: str = event.get('httpMethod', 'GET')
     
