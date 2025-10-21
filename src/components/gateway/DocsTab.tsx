@@ -79,7 +79,15 @@ const DocsTab = () => {
               </span>
               <span className="block">
                 <Icon name="ExternalLink" size={12} className="inline mr-1" />
-                Возврат (sell_refund): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/sell_refund</code>
+                Возврат прихода (sell_refund): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/sell_refund</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Расход (buy): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/buy</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Возврат расхода (buy_refund): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/buy_refund</code>
               </span>
               <span className="block">
                 <Icon name="ExternalLink" size={12} className="inline mr-1" />
@@ -88,6 +96,14 @@ const DocsTab = () => {
               <span className="block">
                 <Icon name="ExternalLink" size={12} className="inline mr-1" />
                 Коррекция расхода (buy_correction): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/buy_correction</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Коррекция возврата прихода (sell_refund_correction): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/sell_refund_correction</code>
+              </span>
+              <span className="block">
+                <Icon name="ExternalLink" size={12} className="inline mr-1" />
+                Коррекция возврата расхода (buy_refund_correction): <code className="px-1 bg-blue-100 dark:bg-blue-900 rounded">https://app.ecomkassa.ru/fiscalorder/v5/{'{group_code}'}/buy_refund_correction</code>
               </span>
               <span className="block">
                 <Icon name="Info" size={12} className="inline mr-1" />
@@ -154,12 +170,14 @@ const DocsTab = () => {
             </div>
 
             <div>
-              <h4 className="text-sm font-semibold mb-2">Маппинг типов операций (Ferma → eKomKassa):</h4>
+              <h4 className="text-sm font-semibold mb-2">Маппинг типов операций (Ferma Type → eKomKassa operation):</h4>
               <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                <span className="text-muted-foreground">Income → sell</span>
-                <span className="text-muted-foreground">IncomeReturn → sell_refund</span>
-                <span className="text-muted-foreground">IncomeCorrection → sell_correction</span>
-                <span className="text-muted-foreground">OutcomeCorrection → buy_correction</span>
+                <span className="text-muted-foreground">Income → sell (Приход)</span>
+                <span className="text-muted-foreground">IncomeReturn → sell_refund (Возврат прихода)</span>
+                <span className="text-muted-foreground">Outcome → buy (Расход)</span>
+                <span className="text-muted-foreground">OutcomeReturn → buy_refund (Возврат расхода)</span>
+                <span className="text-muted-foreground">IncomeCorrection → sell_correction (Корр. прихода)</span>
+                <span className="text-muted-foreground">OutcomeCorrection → buy_correction (Корр. расхода)</span>
                 <span className="text-muted-foreground">IncomeReturnCorrection → sell_refund_correction</span>
                 <span className="text-muted-foreground">OutcomeReturnCorrection → buy_refund_correction</span>
               </div>
