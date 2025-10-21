@@ -4,8 +4,9 @@ from typing import Dict, Any
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Ferma-совместимый API для получения токена eKomKassa
-    URL: /api/Authorization/CreateAuthToken
+    Business: Получение токена авторизации (Ferma AuthToken → eKomKassa getToken)
+    URL: POST /api/auth/token
+    Endpoint: https://app.ecomkassa.ru/fiscalorder/v5/getToken
     Args: event - dict с httpMethod, body (login, password)
           context - объект с request_id, function_name
     Returns: HTTP response с токеном eKomKassa
