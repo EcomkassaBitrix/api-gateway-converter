@@ -1,14 +1,12 @@
 import json
-import os
+import requests
 from typing import Dict, Any
-import urllib.request
-import urllib.error
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
     Business: Конвертация Ferma AuthToken в eKomKassa getToken
-    Args: event с httpMethod, body {login, password}
-          context с request_id
+    Args: event - dict с httpMethod, body (login, password)
+          context - объект с request_id, function_name
     Returns: HTTP response с токеном eKomKassa
     '''
     method: str = event.get('httpMethod', 'GET')
@@ -19,7 +17,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type, X-User-Id, X-Auth-Token',
+                'Access-Control-Allow-Headers': 'Content-Type',
                 'Access-Control-Max-Age': '86400'
             },
             'body': '',
@@ -29,79 +27,48 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if method != 'POST':
         return {
             'statusCode': 405,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
+            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Method not allowed'}),
             'isBase64Encoded': False
         }
     
-    raw_body = event.get('body', '{}')
-    if not raw_body or raw_body == '':
-        raw_body = '{}'
-    
-    body_data = json.loads(raw_body) if isinstance(raw_body, str) else raw_body
-    login = body_data.get('login', '')
-    password = body_data.get('password', '')
+    body_str = event.get('body')
+    if not body_str or (isinstance(body_str, str) and body_str.strip() == ''):
+        body_data = {}
+    else:
+        try:
+            body_data = json.loads(body_str) if isinstance(body_str, str) else body_str
+        except (json.JSONDecodeError, ValueError):
+            body_data = {}
+    login = body_data.get('login')
+    password = body_data.get('password')
     
     if not login or not password:
         return {
             'statusCode': 400,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': 'login and password are required'}),
+            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'login and password required'}),
             'isBase64Encoded': False
         }
-    
-    ekomkassa_request = {
-        'login': login,
-        'pass': password
-    }
-    
-    ekomkassa_url = 'https://app.ecomkassa.ru/fiscalorder/v5/getToken'
     
     try:
-        req = urllib.request.Request(
-            ekomkassa_url,
-            data=json.dumps(ekomkassa_request).encode('utf-8'),
-            headers={'Content-Type': 'application/json'}
+        response = requests.post(
+            'https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            json={'login': login, 'pass': password},
+            headers={'Content-Type': 'application/json'},
+            timeout=10
         )
         
-        with urllib.request.urlopen(req, timeout=10) as response:
-            response_data = response.read().decode('utf-8')
-            ekomkassa_response = json.loads(response_data)
-        
         return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps(ekomkassa_response),
+            'statusCode': response.status_code,
+            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+            'body': response.text,
             'isBase64Encoded': False
         }
-    
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode('utf-8')
-        return {
-            'statusCode': e.code,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': error_body,
-            'isBase64Encoded': False
-        }
-    except Exception as e:
+    except requests.RequestException as e:
         return {
             'statusCode': 500,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'body': json.dumps({'error': str(e)}),
+            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+            'body': json.dumps({'error': f'eKomKassa API error: {str(e)}'}),
             'isBase64Encoded': False
         }

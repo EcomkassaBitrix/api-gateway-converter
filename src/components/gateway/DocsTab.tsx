@@ -90,6 +90,18 @@ const DocsTab = () => {
           
           <div className="space-y-4">
             <div>
+              <h4 className="text-sm font-semibold mb-2">Параметры Ferma (Receipt):</h4>
+              <div className="bg-muted p-3 rounded-lg font-mono text-xs mb-4">
+                <div className="space-y-1">
+                  <div><span className="text-primary">operation</span>: string <span className="text-muted-foreground">// "sell" | "refund" | "sell_correction" | "refund_correction"</span></div>
+                  <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, код группы ККТ (по умолчанию "700")</span></div>
+                  <div><span className="text-primary">items</span>: array <span className="text-muted-foreground">// Массив товаров</span></div>
+                  <div><span className="text-primary">payments</span>: array <span className="text-muted-foreground">// Массив платежей</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
               <h4 className="text-sm font-semibold mb-2">Поддерживаемые операции:</h4>
               <div className="grid gap-2">
                 <div className="flex items-center gap-2 text-sm">

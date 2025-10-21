@@ -24,6 +24,7 @@ const Index = () => {
 
   const exampleFermaRequest = {
     "operation": "sell",
+    "group_code": "700",
     "items": [
       {
         "name": "Товар 1",
@@ -41,11 +42,6 @@ const Index = () => {
   };
 
   const handleConvert = async () => {
-    if (!authToken) {
-      toast.error('Сначала получите токен авторизации');
-      return;
-    }
-    
     setIsConverting(true);
     
     try {
@@ -58,8 +54,7 @@ const Index = () => {
         },
         body: JSON.stringify({
           ...fermaData,
-          token: authToken,
-          group_code: '700'
+          token: authToken
         })
       });
       
