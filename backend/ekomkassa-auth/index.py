@@ -4,12 +4,12 @@ from typing import Dict, Any
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     '''
-    Business: Получение токена авторизации (Ferma AuthToken → eKomKassa getToken)
-    URL: POST /api/auth/token
-    Endpoint: https://app.ecomkassa.ru/fiscalorder/v5/getToken
-    Args: event - dict с httpMethod, body (login, password)
-          context - объект с request_id, function_name
-    Returns: HTTP response с токеном eKomKassa
+    Business: Ferma-совместимый эндпоинт авторизации
+    Ferma URL: POST https://ferma.ofd.ru/api/Authorization/CreateAuthToken
+    Gateway URL: POST https://{domain}/api/Authorization/CreateAuthToken
+    Target: https://app.ecomkassa.ru/fiscalorder/v5/getToken
+    Body: {"Login": "...", "Password": "..."}
+    Returns: {"Status": "Success", "Data": {"AuthToken": "...", "ExpirationDateUtc": "..."}}
     '''
     method: str = event.get('httpMethod', 'GET')
     
