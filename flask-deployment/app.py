@@ -40,31 +40,59 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated_function
 
-def log_to_db(function_name: str, log_level: str, message: str, 
-              request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
-              request_id: Optional[str] = None, duration_ms: Optional[int] = None,
-              status_code: Optional[int] = None) -> None:
-    '''Write log entry to database'''
+def log_request_to_db(
+    method: str,
+    url: str,
+    path: str,
+    source_ip: str,
+    user_agent: str,
+    request_headers: Dict,
+    request_body: Any,
+    target_url: Optional[str] = None,
+    target_method: Optional[str] = None,
+    target_headers: Optional[Dict] = None,
+    target_body: Any = None,
+    response_status: Optional[int] = None,
+    response_headers: Optional[Dict] = None,
+    response_body: Any = None,
+    client_response_status: Optional[int] = None,
+    client_response_body: Any = None,
+    duration_ms: Optional[int] = None,
+    error_message: Optional[str] = None,
+    request_id: Optional[str] = None
+) -> None:
+    '''Полное логирование запроса в БД'''
     try:
         if not DATABASE_URL:
-            logger.warning("DATABASE_URL not set, skipping DB logging")
             return
         
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         
         cur.execute(
-            "INSERT INTO logs (function_name, log_level, message, request_data, response_data, request_id, duration_ms, status_code) "
-            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            """
+            INSERT INTO request_logs (
+                method, url, path, source_ip, user_agent,
+                request_headers, request_body,
+                target_url, target_method, target_headers, target_body,
+                response_status, response_headers, response_body,
+                client_response_status, client_response_body,
+                duration_ms, error_message, request_id
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
             (
-                function_name,
-                log_level,
-                message,
-                json.dumps(request_data) if request_data else None,
-                json.dumps(response_data) if response_data else None,
-                request_id,
-                duration_ms,
-                status_code
+                method, url, path, source_ip, user_agent,
+                json.dumps(request_headers) if request_headers else None,
+                json.dumps(request_body) if request_body else None,
+                target_url, target_method,
+                json.dumps(target_headers) if target_headers else None,
+                json.dumps(target_body) if target_body else None,
+                response_status,
+                json.dumps(response_headers) if response_headers else None,
+                json.dumps(response_body) if response_body else None,
+                client_response_status,
+                json.dumps(client_response_body) if client_response_body else None,
+                duration_ms, error_message, request_id
             )
         )
         
@@ -72,7 +100,107 @@ def log_to_db(function_name: str, log_level: str, message: str,
         cur.close()
         conn.close()
     except Exception as e:
-        logger.error(f"Failed to write log to DB: {str(e)}")
+        logger.error(f"Failed to write request log to DB: {str(e)}")
+
+
+def proxy_and_log(target_url: str, target_method: str = None) -> tuple:
+    '''
+    Универсальная функция для проксирования запроса с полным логированием
+    Возвращает (response_json, status_code)
+    '''
+    start_time = time.time()
+    request_id = request.headers.get('X-Request-ID', f'req_{int(time.time() * 1000)}')
+    
+    # Информация о входящем запросе
+    method = request.method
+    url = request.url
+    path = request.path
+    source_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', '')
+    request_headers = dict(request.headers)
+    request_body = request.get_json(silent=True) or {}
+    
+    # Для проксирования используем метод запроса или переданный
+    if target_method is None:
+        target_method = method
+    
+    response_status = None
+    response_headers = None
+    response_body = None
+    client_response_status = None
+    client_response_body = None
+    error_message = None
+    
+    try:
+        # Подготовка заголовков для проксирования
+        proxy_headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'eKomKassa-Gateway/1.0'
+        }
+        
+        # Отправка запроса к целевому API
+        logger.info(f"[PROXY] {method} {path} -> {target_method} {target_url}")
+        
+        if target_method == 'GET':
+            resp = requests.get(target_url, headers=proxy_headers, params=request.args, timeout=30)
+        else:
+            resp = requests.post(target_url, headers=proxy_headers, json=request_body, timeout=30)
+        
+        response_status = resp.status_code
+        response_headers = dict(resp.headers)
+        
+        try:
+            response_body = resp.json()
+        except:
+            response_body = {'raw': resp.text}
+        
+        # Формируем ответ клиенту
+        client_response_status = response_status
+        client_response_body = response_body
+        
+        duration_ms = int((time.time() - start_time) * 1000)
+        
+        # Логируем всё в БД
+        log_request_to_db(
+            method=method, url=url, path=path,
+            source_ip=source_ip, user_agent=user_agent,
+            request_headers=request_headers, request_body=request_body,
+            target_url=target_url, target_method=target_method,
+            target_headers=proxy_headers, target_body=request_body,
+            response_status=response_status,
+            response_headers=response_headers,
+            response_body=response_body,
+            client_response_status=client_response_status,
+            client_response_body=client_response_body,
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
+        
+        return client_response_body, client_response_status
+        
+    except requests.exceptions.RequestException as e:
+        error_message = str(e)
+        client_response_status = 502
+        client_response_body = {'error': 'Gateway error', 'message': error_message}
+        duration_ms = int((time.time() - start_time) * 1000)
+        
+        logger.error(f"[PROXY] Error: {error_message}")
+        
+        # Логируем ошибку
+        log_request_to_db(
+            method=method, url=url, path=path,
+            source_ip=source_ip, user_agent=user_agent,
+            request_headers=request_headers, request_body=request_body,
+            target_url=target_url, target_method=target_method,
+            target_headers=proxy_headers, target_body=request_body,
+            client_response_status=client_response_status,
+            client_response_body=client_response_body,
+            duration_ms=duration_ms,
+            error_message=error_message,
+            request_id=request_id
+        )
+        
+        return client_response_body, client_response_status
 
 
 # ============================================
@@ -643,6 +771,211 @@ def get_logs():
         
     except Exception as e:
         logger.error(f"Failed to fetch logs: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/request-logs', methods=['GET'])
+@require_auth
+def get_request_logs():
+    '''Получить полные логи запросов с возможностью фильтрации'''
+    try:
+        if not DATABASE_URL:
+            return jsonify({'error': 'Database not configured'}), 500
+        
+        limit = int(request.args.get('limit', 100))
+        offset = int(request.args.get('offset', 0))
+        path_filter = request.args.get('path')
+        status_filter = request.args.get('status')
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        query = """
+            SELECT id, created_at, method, url, path, source_ip, 
+                   request_body, target_url, response_status, response_body,
+                   client_response_status, duration_ms, error_message, request_id
+            FROM request_logs WHERE 1=1
+        """
+        params = []
+        
+        if path_filter:
+            query += " AND path LIKE %s"
+            params.append(f'%{path_filter}%')
+        
+        if status_filter:
+            query += " AND client_response_status = %s"
+            params.append(int(status_filter))
+        
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        
+        logs = []
+        for row in rows:
+            logs.append({
+                'id': row[0],
+                'created_at': row[1].isoformat() if row[1] else None,
+                'method': row[2],
+                'url': row[3],
+                'path': row[4],
+                'source_ip': row[5],
+                'request_body': json.loads(row[6]) if row[6] else None,
+                'target_url': row[7],
+                'response_status': row[8],
+                'response_body': json.loads(row[9]) if row[9] else None,
+                'client_response_status': row[10],
+                'duration_ms': row[11],
+                'error_message': row[12],
+                'request_id': row[13]
+            })
+        
+        cur.close()
+        conn.close()
+        
+        response = jsonify({'logs': logs, 'count': len(logs)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 200
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch request logs: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/request-logs/<int:log_id>', methods=['GET'])
+@require_auth
+def get_request_log_detail(log_id):
+    '''Получить детальную информацию об одном запросе'''
+    try:
+        if not DATABASE_URL:
+            return jsonify({'error': 'Database not configured'}), 500
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, created_at, method, url, path, source_ip, user_agent,
+                   request_headers, request_body,
+                   target_url, target_method, target_headers, target_body,
+                   response_status, response_headers, response_body,
+                   client_response_status, client_response_body,
+                   duration_ms, error_message, request_id
+            FROM request_logs WHERE id = %s
+        """, (log_id,))
+        
+        row = cur.fetchone()
+        
+        if not row:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Log not found'}), 404
+        
+        log_detail = {
+            'id': row[0],
+            'created_at': row[1].isoformat() if row[1] else None,
+            'method': row[2],
+            'url': row[3],
+            'path': row[4],
+            'source_ip': row[5],
+            'user_agent': row[6],
+            'request_headers': json.loads(row[7]) if row[7] else None,
+            'request_body': json.loads(row[8]) if row[8] else None,
+            'target_url': row[9],
+            'target_method': row[10],
+            'target_headers': json.loads(row[11]) if row[11] else None,
+            'target_body': json.loads(row[12]) if row[12] else None,
+            'response_status': row[13],
+            'response_headers': json.loads(row[14]) if row[14] else None,
+            'response_body': json.loads(row[15]) if row[15] else None,
+            'client_response_status': row[16],
+            'client_response_body': json.loads(row[17]) if row[17] else None,
+            'duration_ms': row[18],
+            'error_message': row[19],
+            'request_id': row[20]
+        }
+        
+        cur.close()
+        conn.close()
+        
+        response = jsonify(log_detail)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 200
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch request log detail: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/request-logs/<int:log_id>/replay', methods=['POST'])
+@require_auth
+def replay_request(log_id):
+    '''Повторить запрос из истории'''
+    try:
+        if not DATABASE_URL:
+            return jsonify({'error': 'Database not configured'}), 500
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT target_url, target_method, target_body
+            FROM request_logs WHERE id = %s
+        """, (log_id,))
+        
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not row:
+            return jsonify({'error': 'Log not found'}), 404
+        
+        target_url, target_method, target_body = row
+        
+        if not target_url:
+            return jsonify({'error': 'No target URL in log'}), 400
+        
+        # Повторяем запрос
+        start_time = time.time()
+        headers = {'Content-Type': 'application/json'}
+        
+        try:
+            body = json.loads(target_body) if target_body else {}
+        except:
+            body = {}
+        
+        try:
+            if target_method == 'GET':
+                resp = requests.get(target_url, headers=headers, timeout=30)
+            else:
+                resp = requests.post(target_url, headers=headers, json=body, timeout=30)
+            
+            duration_ms = int((time.time() - start_time) * 1000)
+            
+            try:
+                response_body = resp.json()
+            except:
+                response_body = {'raw': resp.text}
+            
+            return jsonify({
+                'success': True,
+                'status': resp.status_code,
+                'body': response_body,
+                'duration_ms': duration_ms
+            }), 200
+            
+        except requests.exceptions.RequestException as e:
+            duration_ms = int((time.time() - start_time) * 1000)
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'duration_ms': duration_ms
+            }), 502
+        
+    except Exception as e:
+        logger.error(f"Failed to replay request: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
