@@ -1,0 +1,331 @@
+{
+	"info": {
+		"_postman_id": "ecomkassa-api-collection",
+		"name": "EcomKassa API",
+		"description": "Коллекция для тестирования API шлюза EcomKassa\n\nБазовый URL: https://gw.ecomkassa.ru\n\nШаги использования:\n1. Получить AuthToken через CreateAuthToken\n2. Использовать токен в других запросах\n3. Создать чек через /receipt\n4. Проверить статус через /status",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Authorization",
+			"item": [
+				{
+					"name": "Create Auth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Автоматически сохраняем токен в переменные окружения",
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.AuthToken) {",
+									"        pm.environment.set('authToken', jsonData.AuthToken);",
+									"        console.log('AuthToken сохранён:', jsonData.AuthToken);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Login\": \"{{login}}\",\n  \"Password\": \"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/Authorization/CreateAuthToken",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"Authorization",
+								"CreateAuthToken"
+							]
+						},
+						"description": "Получение токена авторизации для дальнейших запросов.\n\nПараметры:\n- Login: логин кассы\n- Password: пароль кассы\n\nОтвет содержит AuthToken, который автоматически сохраняется в переменные окружения."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"Login\": \"test_login\",\n  \"Password\": \"test_password\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/Authorization/CreateAuthToken",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"Authorization",
+										"CreateAuthToken"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"AuthToken\": \"example_token_12345\",\n  \"Errors\": null\n}"
+						}
+					]
+				}
+			],
+			"description": "Эндпоинты для авторизации"
+		},
+		{
+			"name": "2. KKT Operations",
+			"item": [
+				{
+					"name": "Get KKT Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/kkt/cloud/status?uuid={{kkt_uuid}}&AuthToken={{authToken}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "{{kkt_uuid}}",
+									"description": "UUID кассы"
+								},
+								{
+									"key": "AuthToken",
+									"value": "{{authToken}}",
+									"description": "Токен авторизации (автоматически подставляется)"
+								}
+							]
+						},
+						"description": "Получение статуса кассы по UUID.\n\nПараметры:\n- uuid: UUID кассы\n- AuthToken: токен авторизации (автоматически подставляется из переменных)\n\nОтвет содержит информацию о состоянии кассы."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/kkt/cloud/status?uuid=test-uuid-123&AuthToken=test_token",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"kkt",
+										"cloud",
+										"status"
+									],
+									"query": [
+										{
+											"key": "uuid",
+											"value": "test-uuid-123"
+										},
+										{
+											"key": "AuthToken",
+											"value": "test_token"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"Status\": \"ready\",\n  \"CheckNumber\": 42,\n  \"SessionNumber\": 15,\n  \"Errors\": null\n}"
+						}
+					]
+				},
+				{
+					"name": "Create Receipt",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"AuthToken\": \"{{authToken}}\",\n  \"Request\": {\n    \"UUID\": \"{{kkt_uuid}}\",\n    \"Request\": {\n      \"Type\": \"Income\",\n      \"InvoiceId\": \"{{$randomUUID}}\",\n      \"TaxationType\": \"OSN\",\n      \"ClientInfo\": {\n        \"EmailOrPhone\": \"+79001234567\"\n      },\n      \"Items\": [\n        {\n          \"Price\": 100.00,\n          \"Quantity\": 1,\n          \"Amount\": 100.00,\n          \"Name\": \"Тестовый товар\",\n          \"Tax\": \"NDS20\",\n          \"PaymentMethod\": \"FullPayment\",\n          \"PaymentObject\": \"Commodity\"\n        }\n      ],\n      \"Cash\": 0.00,\n      \"ElectronicPayment\": 100.00,\n      \"AdvancePayment\": 0.00,\n      \"Credit\": 0.00,\n      \"CashProvision\": 0.00\n    }\n  }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/kkt/cloud/receipt",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание нового чека.\n\nТело запроса содержит:\n- AuthToken: токен авторизации (автоматически подставляется)\n- Request.UUID: UUID кассы\n- Request.Request: данные чека (тип, товары, сумма и т.д.)\n\nОтвет содержит информацию о созданном чеке."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"AuthToken\": \"test_token\",\n  \"Request\": {\n    \"UUID\": \"test-uuid-123\",\n    \"Request\": {\n      \"Type\": \"Income\",\n      \"InvoiceId\": \"invoice-123\",\n      \"TaxationType\": \"OSN\",\n      \"ClientInfo\": {\n        \"EmailOrPhone\": \"+79001234567\"\n      },\n      \"Items\": [\n        {\n          \"Price\": 100.00,\n          \"Quantity\": 1,\n          \"Amount\": 100.00,\n          \"Name\": \"Тестовый товар\",\n          \"Tax\": \"NDS20\",\n          \"PaymentMethod\": \"FullPayment\",\n          \"PaymentObject\": \"Commodity\"\n        }\n      ],\n      \"Cash\": 0.00,\n      \"ElectronicPayment\": 100.00\n    }\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/kkt/cloud/receipt",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"kkt",
+										"cloud",
+										"receipt"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"CheckNumber\": 43,\n  \"SessionNumber\": 15,\n  \"FiscalSign\": \"1234567890\",\n  \"Errors\": null\n}"
+						}
+					]
+				}
+			],
+			"description": "Операции с кассой (статус, создание чеков)"
+		},
+		{
+			"name": "3. Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Проверка работоспособности API.\n\nОтвет: status: ok если сервис работает."
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/health",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"health"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"status\": \"ok\",\n  \"timestamp\": \"2025-10-22T12:00:00Z\"\n}"
+						}
+					]
+				}
+			],
+			"description": "Проверка работоспособности сервиса"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://gw.ecomkassa.ru",
+			"type": "string"
+		}
+	]
+}
