@@ -30,7 +30,7 @@ export default function Logs() {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [loginForm, setLoginForm] = useState({ login: '', password: '' });
@@ -118,7 +118,7 @@ export default function Logs() {
       fetchLogs();
       
       if (autoRefresh) {
-        const interval = setInterval(fetchLogs, 5000);
+        const interval = setInterval(fetchLogs, 3000);
         return () => clearInterval(interval);
       }
     }
