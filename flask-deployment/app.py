@@ -103,6 +103,41 @@ def log_request_to_db(
         logger.error(f"Failed to write request log to DB: {str(e)}")
 
 
+def log_to_db(function_name: str, log_level: str, message: str, 
+              request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
+              request_id: Optional[str] = None, duration_ms: Optional[int] = None,
+              status_code: Optional[int] = None) -> None:
+    '''Старая функция логирования для обратной совместимости'''
+    try:
+        if not DATABASE_URL:
+            logger.warning("DATABASE_URL not set, skipping DB logging")
+            return
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        cur.execute(
+            "INSERT INTO logs (function_name, log_level, message, request_data, response_data, request_id, duration_ms, status_code) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                function_name,
+                log_level,
+                message,
+                json.dumps(request_data) if request_data else None,
+                json.dumps(response_data) if response_data else None,
+                request_id,
+                duration_ms,
+                status_code
+            )
+        )
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Failed to write log to DB: {str(e)}")
+
+
 def proxy_and_log(target_url: str, target_method: str = None) -> tuple:
     '''
     Универсальная функция для проксирования запроса с полным логированием
