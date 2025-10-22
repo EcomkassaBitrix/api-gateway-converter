@@ -11,6 +11,8 @@ interface LogFiltersProps {
   setMethodFilter: (value: string) => void;
   statusFilter: string;
   setStatusFilter: (value: string) => void;
+  dateFilter: string;
+  setDateFilter: (value: string) => void;
   filteredCount: number;
   totalCount: number;
 }
@@ -22,14 +24,17 @@ export default function LogFilters({
   setMethodFilter,
   statusFilter,
   setStatusFilter,
+  dateFilter,
+  setDateFilter,
   filteredCount,
   totalCount
 }: LogFiltersProps) {
-  const hasFilters = methodFilter !== 'all' || statusFilter !== 'all' || search;
+  const hasFilters = methodFilter !== 'all' || statusFilter !== 'all' || search || dateFilter !== 'all';
 
   const handleReset = () => {
     setMethodFilter('all');
     setStatusFilter('all');
+    setDateFilter('all');
     setSearch('');
   };
 
@@ -68,6 +73,19 @@ export default function LogFilters({
             <SelectItem value="2xx">2xx (Успешно)</SelectItem>
             <SelectItem value="4xx">4xx (Ошибка клиента)</SelectItem>
             <SelectItem value="5xx">5xx (Ошибка сервера)</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Период" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Всё время</SelectItem>
+            <SelectItem value="1h">Последний час</SelectItem>
+            <SelectItem value="6h">6 часов</SelectItem>
+            <SelectItem value="24h">24 часа</SelectItem>
+            <SelectItem value="7d">7 дней</SelectItem>
           </SelectContent>
         </Select>
 

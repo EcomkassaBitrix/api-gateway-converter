@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 interface RequestLogDetail {
   id: number;
@@ -73,9 +74,66 @@ export default function LogDetailModal({
     });
   };
 
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section);
+    } else {
+      newExpanded.add(section);
+    }
+    setExpandedSections(newExpanded);
+  };
+
   const handleCopy = () => {
     navigator.clipboard.writeText(JSON.stringify(log, null, 2));
     toast.success('Скопировано в буфер обмена');
+  };
+
+  const renderJSON = (data: any, maxLines = 10) => {
+    if (!data) return <span className="text-gray-400">null</span>;
+    const jsonStr = JSON.stringify(data, null, 2);
+    const lines = jsonStr.split('\n');
+    return (
+      <span className="text-xs font-mono">
+        {lines.map((line, i) => (
+          <div key={i} className="hover:bg-gray-100">
+            <span className="text-gray-400 select-none mr-3">{(i + 1).toString().padStart(3, ' ')}</span>
+            <span>{line}</span>
+          </div>
+        ))}
+      </span>
+    );
+  };
+
+  const renderCollapsibleJSON = (title: string, data: any, sectionKey: string) => {
+    const isExpanded = expandedSections.has(sectionKey);
+    const jsonStr = JSON.stringify(data, null, 2);
+    const lines = jsonStr.split('\n');
+    const preview = lines.slice(0, 3).join('\n') + (lines.length > 3 ? '\n  ...' : '');
+
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-gray-700">{title}</h3>
+          {lines.length > 5 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleSection(sectionKey)}
+              className="text-xs gap-1"
+            >
+              <Icon name={isExpanded ? 'ChevronUp' : 'ChevronDown'} size={14} />
+              {isExpanded ? 'Свернуть' : 'Развернуть'}
+            </Button>
+          )}
+        </div>
+        <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-xs overflow-x-auto" style={{ maxHeight: isExpanded ? 'none' : '200px' }}>
+          {isExpanded || lines.length <= 5 ? renderJSON(data) : preview}
+        </pre>
+      </div>
+    );
   };
 
   return (
@@ -138,38 +196,13 @@ export default function LogDetailModal({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">Заголовки запроса</h3>
-              <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
-                {JSON.stringify(log.request_headers, null, 2)}
-              </pre>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-2">Заголовки ответа</h3>
-              <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
-                {JSON.stringify(log.response_headers, null, 2)}
-              </pre>
-            </div>
+            {renderCollapsibleJSON('Заголовки запроса', log.request_headers, 'request_headers')}
+            {renderCollapsibleJSON('Заголовки ответа', log.response_headers, 'response_headers')}
           </div>
 
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2">Тело запроса</h3>
-            <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-64">
-              {typeof log.request_body === 'string' 
-                ? log.request_body 
-                : JSON.stringify(log.request_body, null, 2)}
-            </pre>
-          </div>
-
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2">Тело ответа</h3>
-            <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-64">
-              {typeof log.response_body === 'string' 
-                ? log.response_body 
-                : JSON.stringify(log.response_body, null, 2)}
-            </pre>
-          </div>
+          {renderCollapsibleJSON('Тело запроса', log.request_body, 'request_body')}
+          {renderCollapsibleJSON('Тело ответа (eKomKassa)', log.response_body, 'response_body')}
+          {renderCollapsibleJSON('Тело ответа (клиенту)', log.client_response_body, 'client_response_body')}
 
           {log.error_message && (
             <div>
