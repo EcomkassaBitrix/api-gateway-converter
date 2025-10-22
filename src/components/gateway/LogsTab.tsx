@@ -30,7 +30,7 @@ const LogsTab = ({ recentLogs }: LogsTabProps) => {
             </CardTitle>
             <CardDescription>История конвертации в реальном времени</CardDescription>
           </div>
-          <Button onClick={() => navigate('/logs')} variant="outline" className="gap-2">
+          <Button onClick={() => navigate('/request-logs')} variant="outline" className="gap-2">
             <Icon name="ExternalLink" size={16} />
             Открыть полные логи
           </Button>
