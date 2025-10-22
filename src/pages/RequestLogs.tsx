@@ -43,6 +43,7 @@ export default function RequestLogs() {
   const [loading, setLoading] = useState(true);
   const [methodFilter, setMethodFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<RequestLogDetail | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -183,11 +184,26 @@ export default function RequestLogs() {
       (statusFilter === '2xx' && log.response_status && log.response_status >= 200 && log.response_status < 300) ||
       (statusFilter === '4xx' && log.response_status && log.response_status >= 400 && log.response_status < 500) ||
       (statusFilter === '5xx' && log.response_status && log.response_status >= 500);
+    
+    const matchesDate = () => {
+      if (dateFilter === 'all') return true;
+      const logDate = new Date(log.created_at);
+      const now = new Date();
+      const diffMs = now.getTime() - logDate.getTime();
+      const diffHours = diffMs / (1000 * 60 * 60);
+      
+      if (dateFilter === '1h') return diffHours <= 1;
+      if (dateFilter === '6h') return diffHours <= 6;
+      if (dateFilter === '24h') return diffHours <= 24;
+      if (dateFilter === '7d') return diffHours <= 24 * 7;
+      return true;
+    };
+    
     const matchesSearch = search === '' || 
       log.path.toLowerCase().includes(search.toLowerCase()) ||
       log.source_ip?.includes(search) ||
       log.request_id?.toLowerCase().includes(search.toLowerCase());
-    return matchesMethod && matchesStatus && matchesSearch;
+    return matchesMethod && matchesStatus && matchesDate() && matchesSearch;
   });
 
   if (checkingAuth || !authenticated) {
@@ -237,6 +253,8 @@ export default function RequestLogs() {
           setMethodFilter={setMethodFilter}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
+          dateFilter={dateFilter}
+          setDateFilter={setDateFilter}
           filteredCount={filteredLogs.length}
           totalCount={logs.length}
         />
