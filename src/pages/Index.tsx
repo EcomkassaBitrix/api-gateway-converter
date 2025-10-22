@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import funcUrls from '../../backend/func2url.json';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
@@ -75,7 +74,7 @@ const Index = () => {
     try {
       const fermaData = JSON.parse(fermaInput);
       
-      const response = await fetch(funcUrls['ekomkassa-receipt'], {
+      const response = await fetch('/api/kkt/cloud/receipt', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -193,7 +192,7 @@ const Index = () => {
     setIsAuthenticating(true);
     
     try {
-      const response = await fetch(funcUrls['ekomkassa-auth'], {
+      const response = await fetch('/api/Authorization/CreateAuthToken', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -231,7 +230,7 @@ const Index = () => {
         group_code: statusForm.group_code
       });
 
-      const response = await fetch(`${funcUrls['ekomkassa-status']}?${params}`, {
+      const response = await fetch(`/api/kkt/cloud/status?${params}`, {
         method: 'GET'
       });
       
