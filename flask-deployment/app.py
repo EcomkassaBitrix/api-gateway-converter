@@ -297,6 +297,28 @@ def auth_handler():
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
+        # Логируем в request_logs
+        log_request_to_db(
+            method=request.method,
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=body_data,
+            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_method='POST',
+            target_headers={'Content-Type': 'application/json'},
+            target_body=request_payload,
+            response_status=response.status_code,
+            response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code,
+            client_response_body=response_json,
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
+        
         flask_response = app.response_class(
             response=response.text,
             status=response.status_code,
@@ -307,13 +329,33 @@ def auth_handler():
         
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.error(f"[AUTH] eKomKassa API error: {str(e)}")
-        log_to_db('auth', 'ERROR', f'eKomKassa API error: {str(e)}',
+        error_msg = str(e)
+        logger.error(f"[AUTH] eKomKassa API error: {error_msg}")
+        log_to_db('auth', 'ERROR', f'eKomKassa API error: {error_msg}',
                   request_data={'login': login},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
-        return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
+        
+        # Логируем ошибку в request_logs
+        log_request_to_db(
+            method=request.method,
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=body_data,
+            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_method='POST',
+            client_response_status=500,
+            client_response_body={'error': error_msg},
+            duration_ms=duration_ms,
+            error_message=error_msg,
+            request_id=request_id
+        )
+        
+        return jsonify({'error': f'eKomKassa API error: {error_msg}'}), 500
 
 
 # ============================================
@@ -599,6 +641,28 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=response.status_code)
+        
+        # Логируем в request_logs
+        log_request_to_db(
+            method='POST',
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=ferma_request,
+            target_url=ekomkassa_url,
+            target_method='POST',
+            target_headers={'Content-Type': 'application/json', 'Token': token},
+            target_body=ekomkassa_payload,
+            response_status=response.status_code,
+            response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code,
+            client_response_body=response_json,
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
         
         flask_response = app.response_class(
             response=response.text,
