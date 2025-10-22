@@ -1,5 +1,11 @@
 # Инструкция по развёртыванию Flask Gateway на gw.ecomkassa.ru
 
+Эта инструкция описывает полное развёртывание:
+1. Flask API (backend) для работы с eKomKassa
+2. React веб-интерфейс (frontend) для управления через браузер
+3. PostgreSQL для логирования запросов
+4. Nginx + SSL для публикации в интернет
+
 ## Подготовка сервера
 
 ### 1. Установка необходимых пакетов
@@ -212,14 +218,41 @@ sudo systemctl daemon-reload
 sudo systemctl restart ekomkassa-gateway
 ```
 
+## Развёртывание веб-интерфейса (опционально)
+
+Если вы хотите веб-интерфейс на `https://gw.ecomkassa.ru/`, следуйте инструкции в файле **BUILD_FRONTEND.md**.
+
+Краткая версия:
+
+```bash
+# 1. Скачать билд из poehali.dev (Скачать → Скачать билд)
+# Или собрать локально: npm run build
+
+# 2. Скопировать на сервер
+rsync -avz --delete dist/ user@gw.ecomkassa.ru:/var/www/ekomkassa-gateway/dist/
+
+# 3. Обновить app.py (уже готов в репозитории)
+# 4. Перезапустить сервис
+sudo systemctl restart ekomkassa-gateway
+```
+
+После этого:
+- `https://gw.ecomkassa.ru/` - веб-интерфейс для работы с API
+- `https://gw.ecomkassa.ru/api/*` - API эндпоинты (как раньше)
+
 ## Доступные эндпоинты
 
 После развёртывания будут доступны:
 
+### API эндпоинты:
 1. **POST** `https://gw.ecomkassa.ru/api/Authorization/CreateAuthToken`
 2. **GET** `https://gw.ecomkassa.ru/api/kkt/cloud/status?uuid={uuid}&AuthToken={token}`
 3. **POST** `https://gw.ecomkassa.ru/api/kkt/cloud/receipt`
 4. **GET** `https://gw.ecomkassa.ru/health`
+
+### Веб-интерфейс (если развёрнут):
+1. **GET** `https://gw.ecomkassa.ru/` - главная страница с формами тестирования API
+2. **GET** `https://gw.ecomkassa.ru/logs` - просмотр логов из базы данных
 
 Все запросы логируются в PostgreSQL базу данных `ekomkassa_logs`.
 

@@ -4,11 +4,11 @@ import logging
 import os
 import time
 import psycopg2
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='dist', static_url_path='')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -503,6 +503,24 @@ def convert_simple_format(body_data: Dict[str, Any], start_time: float, request_
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()}), 200
+
+
+# ============================================
+# STATIC FILES (WEB INTERFACE)
+# ============================================
+@app.route('/')
+def serve_index():
+    '''Serve the web interface index.html'''
+    return send_from_directory(app.static_folder, 'index.html')
+
+
+@app.route('/<path:path>')
+def serve_static(path):
+    '''Serve static files (JS, CSS, images) or SPA routes'''
+    if os.path.exists(os.path.join(app.static_folder, path)):
+        return send_from_directory(app.static_folder, path)
+    else:
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 if __name__ == '__main__':
