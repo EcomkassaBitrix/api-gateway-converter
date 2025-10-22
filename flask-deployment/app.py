@@ -13,7 +13,9 @@ from functools import wraps
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 STATIC_FOLDER = os.path.join(BASE_DIR, 'dist')
 
-app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
+# Отключаем встроенный обработчик статики Flask (static_folder=None)
+# Чтобы наши кастомные роуты работали правильно для SPA
+app = Flask(__name__, static_folder=None, static_url_path=None)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'ecomkassa-gateway-secret-key-2025')
 
 logging.basicConfig(
@@ -656,16 +658,18 @@ def health():
 @app.route('/')
 def serve_index():
     '''Serve the web interface index.html'''
-    return send_from_directory(app.static_folder, 'index.html')
+    return send_from_directory(STATIC_FOLDER, 'index.html')
 
 
 @app.route('/<path:path>')
 def serve_static(path):
     '''Serve static files (JS, CSS, images) or SPA routes'''
-    if os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
+    full_path = os.path.join(STATIC_FOLDER, path)
+    if os.path.exists(full_path):
+        return send_from_directory(STATIC_FOLDER, path)
     else:
-        return send_from_directory(app.static_folder, 'index.html')
+        # Для всех SPA роутов возвращаем index.html
+        return send_from_directory(STATIC_FOLDER, 'index.html')
 
 
 if __name__ == '__main__':
