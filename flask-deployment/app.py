@@ -4,11 +4,13 @@ import logging
 import os
 import time
 import psycopg2
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session, redirect, url_for
 from typing import Dict, Any, Optional
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__, static_folder='dist', static_url_path='')
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'ecomkassa-gateway-secret-key-2025')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +20,19 @@ logger = logging.getLogger(__name__)
 
 # Database URL from environment
 DATABASE_URL = os.environ.get('DATABASE_URL')
+
+# Admin credentials
+ADMIN_LOGIN = 'admin'
+ADMIN_PASSWORD = 'GatewayEcomkassa'
+
+def require_auth(f):
+    '''Decorator for routes that require authentication'''
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('authenticated'):
+            return jsonify({'error': 'Unauthorized', 'message': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated_function
 
 def log_to_db(function_name: str, log_level: str, message: str, 
               request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
@@ -497,6 +512,132 @@ def convert_simple_format(body_data: Dict[str, Any], start_time: float, request_
                   duration_ms=duration_ms,
                   status_code=500)
         return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
+
+
+# ============================================
+# AUTH ENDPOINTS FOR WEB INTERFACE
+# ============================================
+@app.route('/api/admin/login', methods=['POST', 'OPTIONS'])
+def admin_login():
+    '''Login endpoint for admin panel'''
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Max-Age'] = '86400'
+        return response, 200
+    
+    body_data = request.get_json(silent=True) or {}
+    login = body_data.get('login')
+    password = body_data.get('password')
+    
+    logger.info(f"[ADMIN] Login attempt: login={login}")
+    
+    if login == ADMIN_LOGIN and password == ADMIN_PASSWORD:
+        session['authenticated'] = True
+        session['login'] = login
+        logger.info(f"[ADMIN] Login successful: {login}")
+        
+        response = jsonify({'success': True, 'message': 'Authentication successful'})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 200
+    else:
+        logger.warning(f"[ADMIN] Login failed: {login}")
+        response = jsonify({'success': False, 'message': 'Invalid credentials'})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        return response, 401
+
+@app.route('/api/admin/logout', methods=['POST', 'OPTIONS'])
+def admin_logout():
+    '''Logout endpoint for admin panel'''
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+        response.headers['Access-Control-Max-Age'] = '86400'
+        return response, 200
+    
+    session.clear()
+    logger.info("[ADMIN] User logged out")
+    
+    response = jsonify({'success': True, 'message': 'Logged out successfully'})
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response, 200
+
+@app.route('/api/admin/check', methods=['GET'])
+def admin_check():
+    '''Check if user is authenticated'''
+    is_authenticated = session.get('authenticated', False)
+    
+    response = jsonify({
+        'authenticated': is_authenticated,
+        'login': session.get('login') if is_authenticated else None
+    })
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response, 200
+
+@app.route('/api/logs', methods=['GET'])
+@require_auth
+def get_logs():
+    '''Get logs from database with pagination and filtering'''
+    try:
+        if not DATABASE_URL:
+            return jsonify({'error': 'Database not configured'}), 500
+        
+        limit = int(request.args.get('limit', 100))
+        offset = int(request.args.get('offset', 0))
+        function_name = request.args.get('function')
+        log_level = request.args.get('level')
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        query = "SELECT id, timestamp, function_name, log_level, message, request_id, duration_ms, status_code FROM logs WHERE 1=1"
+        params = []
+        
+        if function_name:
+            query += " AND function_name = %s"
+            params.append(function_name)
+        
+        if log_level:
+            query += " AND log_level = %s"
+            params.append(log_level)
+        
+        query += " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        
+        logs = []
+        for row in rows:
+            logs.append({
+                'id': row[0],
+                'timestamp': row[1].isoformat() if row[1] else None,
+                'function_name': row[2],
+                'log_level': row[3],
+                'message': row[4],
+                'request_id': row[5],
+                'duration_ms': row[6],
+                'status_code': row[7]
+            })
+        
+        cur.close()
+        conn.close()
+        
+        response = jsonify({'logs': logs, 'count': len(logs)})
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 200
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch logs: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 
 # Health check
