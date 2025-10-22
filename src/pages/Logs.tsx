@@ -7,6 +7,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
+const API_BASE = window.location.hostname === 'localhost' 
+  ? 'http://localhost:5000'
+  : 'https://gw.ecomkassa.ru';
+
 interface LogEntry {
   id: number;
   created_at: string;
@@ -27,13 +31,76 @@ export default function Logs() {
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [loginForm, setLoginForm] = useState({ login: '', password: '' });
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  const checkAuth = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/check`, {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setAuthenticated(data.authenticated);
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setAuthenticated(false);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(loginForm)
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAuthenticated(true);
+        toast.success('Успешный вход');
+      } else {
+        toast.error(data.message || 'Неверные данные');
+      }
+    } catch (error) {
+      toast.error('Ошибка авторизации');
+      console.error(error);
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/api/admin/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+      setAuthenticated(false);
+      toast.success('Вы вышли');
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch('https://functions.poehali.dev/ed40a7a0-1c4e-47c5-b69a-bbe27853e591?limit=100');
+      const response = await fetch(`${API_BASE}/api/logs?limit=100`, {
+        credentials: 'include'
+      });
+      if (response.status === 401) {
+        setAuthenticated(false);
+        return;
+      }
       if (!response.ok) throw new Error('Failed to fetch logs');
       const data = await response.json();
-      setLogs(data);
+      setLogs(data.logs || []);
     } catch (error) {
       toast.error('Ошибка загрузки логов');
       console.error(error);
@@ -43,13 +110,19 @@ export default function Logs() {
   };
 
   useEffect(() => {
-    fetchLogs();
-    
-    if (autoRefresh) {
-      const interval = setInterval(fetchLogs, 5000);
-      return () => clearInterval(interval);
+    checkAuth();
+  }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      fetchLogs();
+      
+      if (autoRefresh) {
+        const interval = setInterval(fetchLogs, 5000);
+        return () => clearInterval(interval);
+      }
     }
-  }, [autoRefresh]);
+  }, [authenticated, autoRefresh]);
 
   const filteredLogs = logs.filter(log => {
     const matchesFilter = filter === 'all' || log.function_name === filter;
@@ -87,6 +160,73 @@ export default function Logs() {
     });
   };
 
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <Card className="p-8 text-center">
+          <Icon name="Loader" className="animate-spin mx-auto mb-2" size={32} />
+          <p className="text-gray-600">Проверка авторизации...</p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md p-8">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Icon name="Lock" size={32} className="text-blue-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Вход в админку</h1>
+            <p className="text-gray-600">Введите логин и пароль для доступа к логам</p>
+          </div>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Логин</label>
+              <Input
+                type="text"
+                placeholder="admin"
+                value={loginForm.login}
+                onChange={(e) => setLoginForm({ ...loginForm, login: e.target.value })}
+                required
+                disabled={loggingIn}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Пароль</label>
+              <Input
+                type="password"
+                placeholder="••••••••"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                required
+                disabled={loggingIn}
+              />
+            </div>
+            
+            <Button type="submit" className="w-full" disabled={loggingIn}>
+              {loggingIn ? (
+                <>
+                  <Icon name="Loader" className="animate-spin mr-2" size={16} />
+                  Вход...
+                </>
+              ) : (
+                <>
+                  <Icon name="LogIn" className="mr-2" size={16} />
+                  Войти
+                </>
+              )}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -108,6 +248,10 @@ export default function Logs() {
             <Button onClick={fetchLogs} variant="outline" className="gap-2">
               <Icon name="RefreshCw" size={16} />
               Обновить
+            </Button>
+            <Button onClick={handleLogout} variant="outline" className="gap-2">
+              <Icon name="LogOut" size={16} />
+              Выйти
             </Button>
           </div>
         </div>
