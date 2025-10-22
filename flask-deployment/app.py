@@ -603,7 +603,7 @@ def get_logs():
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
         
-        query = "SELECT id, timestamp, function_name, log_level, message, request_id, duration_ms, status_code FROM logs WHERE 1=1"
+        query = "SELECT id, created_at, function_name, log_level, message, request_id, duration_ms, status_code FROM logs WHERE 1=1"
         params = []
         
         if function_name:
@@ -614,7 +614,7 @@ def get_logs():
             query += " AND log_level = %s"
             params.append(log_level)
         
-        query += " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
         params.extend([limit, offset])
         
         cur.execute(query, params)
@@ -624,7 +624,7 @@ def get_logs():
         for row in rows:
             logs.append({
                 'id': row[0],
-                'timestamp': row[1].isoformat() if row[1] else None,
+                'created_at': row[1].isoformat() if row[1] else None,
                 'function_name': row[2],
                 'log_level': row[3],
                 'message': row[4],
