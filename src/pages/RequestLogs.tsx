@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
@@ -40,6 +41,8 @@ interface RequestLogDetail extends RequestLog {
 export default function RequestLogs() {
   const [logs, setLogs] = useState<RequestLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [methodFilter, setMethodFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<RequestLogDetail | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -175,11 +178,16 @@ export default function RequestLogs() {
   }, [authenticated, autoRefresh]);
 
   const filteredLogs = logs.filter(log => {
+    const matchesMethod = methodFilter === 'all' || log.method === methodFilter;
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === '2xx' && log.response_status && log.response_status >= 200 && log.response_status < 300) ||
+      (statusFilter === '4xx' && log.response_status && log.response_status >= 400 && log.response_status < 500) ||
+      (statusFilter === '5xx' && log.response_status && log.response_status >= 500);
     const matchesSearch = search === '' || 
       log.path.toLowerCase().includes(search.toLowerCase()) ||
       log.source_ip?.includes(search) ||
       log.request_id?.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
+    return matchesMethod && matchesStatus && matchesSearch;
   });
 
   const getStatusColor = (status?: number) => {
@@ -188,6 +196,16 @@ export default function RequestLogs() {
     if (status >= 400 && status < 500) return 'warning';
     if (status >= 500) return 'destructive';
     return 'secondary';
+  };
+
+  const getMethodColor = (method: string) => {
+    switch (method) {
+      case 'GET': return 'default';
+      case 'POST': return 'secondary';
+      case 'PUT': return 'outline';
+      case 'DELETE': return 'destructive';
+      default: return 'secondary';
+    }
   };
 
   const formatDate = (dateStr: string) => {
@@ -272,11 +290,10 @@ export default function RequestLogs() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Логи запросов</h1>
-            <p className="text-gray-600">Полная история всех API-запросов с возможностью повтора</p>
+            <h1 className="text-3xl font-bold text-gray-900">HTTP-запросы Gateway</h1>
+            <p className="text-gray-600">Полный журнал запросов через прокси</p>
           </div>
           <div className="flex gap-2">
             <Button
@@ -298,191 +315,275 @@ export default function RequestLogs() {
           </div>
         </div>
 
-        {/* Filters */}
-        <Card className="p-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
+        <Card className="p-6">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex-1 min-w-[200px]">
               <Input
-                placeholder="Поиск по пути, IP или request_id..."
+                placeholder="Поиск по URL, IP, Request ID..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full"
               />
             </div>
+            
+            <Select value={methodFilter} onValueChange={setMethodFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Метод" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все методы</SelectItem>
+                <SelectItem value="GET">GET</SelectItem>
+                <SelectItem value="POST">POST</SelectItem>
+                <SelectItem value="PUT">PUT</SelectItem>
+                <SelectItem value="DELETE">DELETE</SelectItem>
+                <SelectItem value="OPTIONS">OPTIONS</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Статус" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Все статусы</SelectItem>
+                <SelectItem value="2xx">2xx (Успешно)</SelectItem>
+                <SelectItem value="4xx">4xx (Ошибка клиента)</SelectItem>
+                <SelectItem value="5xx">5xx (Ошибка сервера)</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(methodFilter !== 'all' || statusFilter !== 'all' || search) && (
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setMethodFilter('all');
+                  setStatusFilter('all');
+                  setSearch('');
+                }}
+                className="gap-2"
+              >
+                <Icon name="X" size={16} />
+                Сбросить
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-4 text-sm text-gray-600">
+            Найдено записей: <span className="font-semibold">{filteredLogs.length}</span> из {logs.length}
           </div>
         </Card>
 
-        {/* Logs Table */}
-        <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Время</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Метод</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Путь</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">IP</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Статус</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Время</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Действия</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {loading ? (
+        {loading ? (
+          <Card className="p-12 text-center">
+            <Icon name="Loader" className="animate-spin mx-auto mb-2" size={32} />
+            <p className="text-gray-600">Загрузка логов...</p>
+          </Card>
+        ) : filteredLogs.length === 0 ? (
+          <Card className="p-12 text-center">
+            <Icon name="Search" className="mx-auto mb-2 text-gray-400" size={48} />
+            <p className="text-gray-600">Логи не найдены</p>
+            <p className="text-sm text-gray-500 mt-1">Попробуйте изменить фильтры или поисковый запрос</p>
+          </Card>
+        ) : (
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b">
                   <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center">
-                      <Icon name="Loader" className="animate-spin mx-auto mb-2" size={32} />
-                      <p className="text-gray-500">Загрузка логов...</p>
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Время</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Метод</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Путь</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Время</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
                   </tr>
-                ) : filteredLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                      Логи не найдены
-                    </td>
-                  </tr>
-                ) : (
-                  filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => fetchLogDetail(log.id)}>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(log.created_at)}
                       </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="outline">{log.method}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-mono text-gray-700">
-                        {log.path}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {log.source_ip}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={getStatusColor(log.client_response_status)}>
-                          {log.client_response_status || 'N/A'}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <Badge variant={getMethodColor(log.method)}>
+                          {log.method}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {log.duration_ms ? `${log.duration_ms}ms` : 'N/A'}
+                      <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                        {log.path}
                       </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleReplay(log.id);
-                          }}
-                          disabled={replaying || !log.target_url}
-                        >
-                          <Icon name="RotateCw" size={14} className="mr-1" />
-                          Повторить
-                        </Button>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {log.source_ip}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {log.response_status ? (
+                          <Badge variant={getStatusColor(log.response_status)}>
+                            {log.response_status}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">N/A</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {log.duration_ms ? `${log.duration_ms}ms` : '-'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => fetchLogDetail(log.id)}
+                            className="gap-1"
+                          >
+                            <Icon name="Eye" size={14} />
+                            Детали
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleReplay(log.id)}
+                            disabled={replaying}
+                            className="gap-1"
+                          >
+                            <Icon name="Play" size={14} />
+                            Повтор
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
 
-        {/* Log Detail Modal */}
         {selectedLog && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-6 z-50" onClick={() => setSelectedLog(null)}>
-            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              <div className="p-6 space-y-4">
+            <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="p-6 border-b bg-gray-50 sticky top-0 z-10">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold">Детали запроса #{selectedLog.id}</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedLog(null)}>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Детали запроса</h2>
+                    <p className="text-sm text-gray-600 mt-1">Request ID: {selectedLog.request_id}</p>
+                  </div>
+                  <Button variant="ghost" onClick={() => setSelectedLog(null)}>
                     <Icon name="X" size={20} />
                   </Button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">Информация о запросе</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Метод:</span>
+                        <Badge variant={getMethodColor(selectedLog.method)}>{selectedLog.method}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Статус:</span>
+                        <Badge variant={getStatusColor(selectedLog.response_status)}>{selectedLog.response_status || 'N/A'}</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Время выполнения:</span>
+                        <span className="font-mono">{selectedLog.duration_ms}ms</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">IP клиента:</span>
+                        <span className="font-mono">{selectedLog.source_ip}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Время:</span>
+                        <span>{formatDate(selectedLog.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-2">User Agent</h3>
+                    <p className="text-sm text-gray-600 break-words">{selectedLog.user_agent || 'N/A'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-2">URL запроса</h3>
+                  <code className="block bg-gray-50 p-3 rounded text-xs break-all">{selectedLog.url}</code>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-2">Целевой URL</h3>
+                  <code className="block bg-gray-50 p-3 rounded text-xs break-all">{selectedLog.target_url}</code>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Время</label>
-                    <p className="text-sm">{formatDate(selectedLog.created_at)}</p>
+                    <h3 className="font-semibold text-gray-700 mb-2">Заголовки запроса</h3>
+                    <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
+                      {JSON.stringify(selectedLog.request_headers, null, 2)}
+                    </pre>
                   </div>
+
                   <div>
-                    <label className="text-sm font-medium text-gray-600">Request ID</label>
-                    <p className="text-sm font-mono">{selectedLog.request_id}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">IP адрес</label>
-                    <p className="text-sm">{selectedLog.source_ip}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-600">User Agent</label>
-                    <p className="text-sm truncate">{selectedLog.user_agent}</p>
+                    <h3 className="font-semibold text-gray-700 mb-2">Заголовки ответа</h3>
+                    <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
+                      {JSON.stringify(selectedLog.response_headers, null, 2)}
+                    </pre>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Входящий запрос</label>
-                  <p className="text-sm font-mono mb-2">{selectedLog.method} {selectedLog.path}</p>
-                  <pre className="bg-gray-50 p-4 rounded text-xs overflow-x-auto">
-                    {JSON.stringify(selectedLog.request_body, null, 2)}
+                  <h3 className="font-semibold text-gray-700 mb-2">Тело запроса</h3>
+                  <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-64">
+                    {typeof selectedLog.request_body === 'string' 
+                      ? selectedLog.request_body 
+                      : JSON.stringify(selectedLog.request_body, null, 2)}
                   </pre>
                 </div>
 
-                {selectedLog.target_url && (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Целевой URL</label>
-                      <p className="text-sm font-mono">{selectedLog.target_method} {selectedLog.target_url}</p>
-                      <pre className="bg-gray-50 p-4 rounded text-xs overflow-x-auto mt-2">
-                        {JSON.stringify(selectedLog.target_body, null, 2)}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-gray-600">Ответ от целевого API</label>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant={getStatusColor(selectedLog.response_status)}>
-                          {selectedLog.response_status}
-                        </Badge>
-                        <span className="text-sm text-gray-600">{selectedLog.duration_ms}ms</span>
-                      </div>
-                      <pre className="bg-gray-50 p-4 rounded text-xs overflow-x-auto">
-                        {JSON.stringify(selectedLog.response_body, null, 2)}
-                      </pre>
-                    </div>
-                  </>
-                )}
-
                 <div>
-                  <label className="text-sm font-medium text-gray-600">Ответ клиенту</label>
-                  <Badge variant={getStatusColor(selectedLog.client_response_status)} className="mb-2">
-                    {selectedLog.client_response_status}
-                  </Badge>
-                  <pre className="bg-gray-50 p-4 rounded text-xs overflow-x-auto">
-                    {JSON.stringify(selectedLog.client_response_body, null, 2)}
+                  <h3 className="font-semibold text-gray-700 mb-2">Тело ответа</h3>
+                  <pre className="bg-gray-50 p-3 rounded text-xs overflow-x-auto max-h-64">
+                    {typeof selectedLog.response_body === 'string' 
+                      ? selectedLog.response_body 
+                      : JSON.stringify(selectedLog.response_body, null, 2)}
                   </pre>
                 </div>
 
                 {selectedLog.error_message && (
                   <div>
-                    <label className="text-sm font-medium text-red-600">Ошибка</label>
-                    <p className="text-sm text-red-600">{selectedLog.error_message}</p>
+                    <h3 className="font-semibold text-red-700 mb-2">Ошибка</h3>
+                    <div className="bg-red-50 border border-red-200 p-3 rounded text-sm text-red-800">
+                      {selectedLog.error_message}
+                    </div>
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setSelectedLog(null)}>
+                <div className="flex gap-2 pt-4 border-t">
+                  <Button
+                    onClick={() => handleReplay(selectedLog.id)}
+                    disabled={replaying}
+                    className="gap-2"
+                  >
+                    <Icon name="Play" size={16} />
+                    Повторить запрос
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(selectedLog, null, 2));
+                      toast.success('Скопировано в буфер обмена');
+                    }}
+                    className="gap-2"
+                  >
+                    <Icon name="Copy" size={16} />
+                    Копировать JSON
+                  </Button>
+                  <Button variant="outline" onClick={() => setSelectedLog(null)} className="ml-auto">
                     Закрыть
                   </Button>
-                  {selectedLog.target_url && (
-                    <Button
-                      onClick={() => {
-                        handleReplay(selectedLog.id);
-                        setSelectedLog(null);
-                      }}
-                      disabled={replaying}
-                    >
-                      <Icon name="RotateCw" size={16} className="mr-2" />
-                      Повторить запрос
-                    </Button>
-                  )}
                 </div>
               </div>
             </Card>
