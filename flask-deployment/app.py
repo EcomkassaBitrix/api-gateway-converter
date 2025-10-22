@@ -9,7 +9,11 @@ from typing import Dict, Any, Optional
 from datetime import datetime
 from functools import wraps
 
-app = Flask(__name__, static_folder='dist', static_url_path='')
+# Определяем абсолютный путь к dist папке
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+STATIC_FOLDER = os.path.join(BASE_DIR, 'dist')
+
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'ecomkassa-gateway-secret-key-2025')
 
 logging.basicConfig(
