@@ -297,6 +297,28 @@ def auth_handler():
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
+        # Логируем в request_logs
+        log_request_to_db(
+            method=request.method,
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=body_data,
+            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_method='POST',
+            target_headers={'Content-Type': 'application/json'},
+            target_body=request_payload,
+            response_status=response.status_code,
+            response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code,
+            client_response_body=response_json,
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
+        
         flask_response = app.response_class(
             response=response.text,
             status=response.status_code,
@@ -307,13 +329,33 @@ def auth_handler():
         
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.error(f"[AUTH] eKomKassa API error: {str(e)}")
-        log_to_db('auth', 'ERROR', f'eKomKassa API error: {str(e)}',
+        error_msg = str(e)
+        logger.error(f"[AUTH] eKomKassa API error: {error_msg}")
+        log_to_db('auth', 'ERROR', f'eKomKassa API error: {error_msg}',
                   request_data={'login': login},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
-        return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
+        
+        # Логируем ошибку в request_logs
+        log_request_to_db(
+            method=request.method,
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=body_data,
+            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_method='POST',
+            client_response_status=500,
+            client_response_body={'error': error_msg},
+            duration_ms=duration_ms,
+            error_message=error_msg,
+            request_id=request_id
+        )
+        
+        return jsonify({'error': f'eKomKassa API error: {error_msg}'}), 500
 
 
 # ============================================
@@ -599,6 +641,28 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=response.status_code)
+        
+        # Логируем в request_logs
+        log_request_to_db(
+            method='POST',
+            url=request.url,
+            path=request.path,
+            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
+            user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers),
+            request_body=ferma_request,
+            target_url=ekomkassa_url,
+            target_method='POST',
+            target_headers={'Content-Type': 'application/json', 'Token': token},
+            target_body=ekomkassa_payload,
+            response_status=response.status_code,
+            response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code,
+            client_response_body=response_json,
+            duration_ms=duration_ms,
+            request_id=request_id
+        )
         
         flask_response = app.response_class(
             response=response.text,
@@ -1110,6 +1174,97 @@ def view_request_logs():
         return f"<h1>Error loading logs</h1><p>{str(e)}</p>", 500
 
 
+
+
+# ============================================
+# REQUEST LOGS WEB VIEW
+# ============================================
+@app.route('/request-logs')
+def view_request_logs():
+    '''Display request logs in HTML table'''
+    try:
+        if not DATABASE_URL:
+            return "<h1>Database not configured</h1>", 500
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, created_at, method, path, source_ip, 
+                   client_request_body, client_response_status, 
+                   client_response_body, duration_ms
+            FROM request_logs 
+            ORDER BY id DESC 
+            LIMIT 100
+        """)
+        
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        html = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Request Logs</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th { background: #4CAF50; color: white; padding: 12px; text-align: left; position: sticky; top: 0; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #f9f9f9; }
+        .json { font-family: monospace; font-size: 12px; max-width: 300px; overflow: auto; }
+        .status-200 { color: green; font-weight: bold; }
+        .status-500 { color: red; font-weight: bold; }
+        .status-other { color: orange; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>📊 Request Logs (Last 100)</h1>
+    <table>
+        <tr>
+            <th>ID</th>
+            <th>Time</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>IP</th>
+            <th>Request Body</th>
+            <th>Status</th>
+            <th>Response Body</th>
+            <th>Duration (ms)</th>
+        </tr>
+'''
+        
+        for row in rows:
+            id_, created_at, method, path, source_ip, req_body, status, resp_body, duration = row
+            
+            status_class = 'status-200' if status == 200 else ('status-500' if status >= 500 else 'status-other')
+            
+            html += f'''
+        <tr>
+            <td>{id_}</td>
+            <td>{created_at}</td>
+            <td><strong>{method}</strong></td>
+            <td>{path}</td>
+            <td>{source_ip}</td>
+            <td class="json">{req_body or '-'}</td>
+            <td class="{status_class}">{status}</td>
+            <td class="json">{resp_body or '-'}</td>
+            <td>{duration or '-'}</td>
+        </tr>
+'''
+        
+        html += '''
+    </table>
+</body>
+</html>
+'''
+        return html
+        
+    except Exception as e:
+        logger.error(f"Failed to load request logs: {str(e)}")
+        return f"<h1>Error loading logs</h1><p>{str(e)}</p>", 500
 
 
 # ============================================
