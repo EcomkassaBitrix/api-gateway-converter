@@ -579,6 +579,66 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     
     timestamp = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
     
+    # Маппинг PaymentAgentInfo из Ferma в agent_info для eKomKassa
+    payment_agent_info = receipt.get('PaymentAgentInfo')
+    agent_info = None
+
+    if payment_agent_info:
+        # Agent type mapping
+        agent_type_mapping = {
+            'BANK_PAYMENT_AGENT': 0,
+            'BANK_PAYMENT_SUBAGENT': 1,
+            'PAYMENT_AGENT': 2,
+            'PAYMENT_SUBAGENT': 3,
+            'ATTORNEY': 4,
+            'COMMISSION_AGENT': 5,
+            'AGENT': 6
+        }
+        
+        agent_info = {
+            'type': agent_type_mapping.get(payment_agent_info.get('AgentType', 'AGENT'), 6)
+        }
+        
+        # Платежный агент
+        if payment_agent_info.get('PaymentAgentOperation') or payment_agent_info.get('PaymentAgentPhone'):
+            agent_info['paying_agent'] = {}
+            if payment_agent_info.get('PaymentAgentOperation'):
+                agent_info['paying_agent']['operation'] = payment_agent_info['PaymentAgentOperation']
+            if payment_agent_info.get('PaymentAgentPhone'):
+                agent_info['paying_agent']['phones'] = [payment_agent_info['PaymentAgentPhone']]
+        
+        # Оператор перевода
+        if payment_agent_info.get('TransferAgentName') or payment_agent_info.get('TransferAgentPhone') or payment_agent_info.get('TransferAgentAddress') or payment_agent_info.get('TransferAgentINN'):
+            agent_info['receive_payments_operator'] = {}
+            if payment_agent_info.get('TransferAgentPhone'):
+                agent_info['receive_payments_operator']['phones'] = [payment_agent_info['TransferAgentPhone']]
+        
+        # Оператор по приему платежей
+        if payment_agent_info.get('TransferAgentName') or payment_agent_info.get('TransferAgentPhone') or payment_agent_info.get('TransferAgentAddress') or payment_agent_info.get('TransferAgentINN'):
+            agent_info['money_transfer_operator'] = {}
+            if payment_agent_info.get('TransferAgentName'):
+                agent_info['money_transfer_operator']['name'] = payment_agent_info['TransferAgentName']
+            if payment_agent_info.get('TransferAgentPhone'):
+                agent_info['money_transfer_operator']['phones'] = [payment_agent_info['TransferAgentPhone']]
+            if payment_agent_info.get('TransferAgentAddress'):
+                agent_info['money_transfer_operator']['address'] = payment_agent_info['TransferAgentAddress']
+            if payment_agent_info.get('TransferAgentINN'):
+                agent_info['money_transfer_operator']['inn'] = payment_agent_info['TransferAgentINN']
+        
+        # Поставщик
+        if payment_agent_info.get('SupplierName') or payment_agent_info.get('SupplierPhone') or payment_agent_info.get('SupplierInn'):
+            supplier_info = {}
+            if payment_agent_info.get('SupplierName'):
+                supplier_info['name'] = payment_agent_info['SupplierName']
+            if payment_agent_info.get('SupplierPhone'):
+                supplier_info['phones'] = [payment_agent_info['SupplierPhone']]
+            if payment_agent_info.get('SupplierInn'):
+                supplier_info['inn'] = payment_agent_info['SupplierInn']
+            
+            # Добавляем supplier_info в каждый item
+            for item in atol_items:
+                item['supplier_info'] = supplier_info
+    
     # Build eKomKassa payload
     ekomkassa_payload = {
         'timestamp': timestamp,
@@ -596,7 +656,11 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'total': sum(item['sum'] for item in atol_items)
         }
     }
-    
+        
+    # Добавляем agent_info в receipt, если он есть
+    if agent_info:
+        ekomkassa_payload['receipt']['agent_info'] = agent_info
+
     ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
     logger.info(f"[RECEIPT] Request to eKomKassa: {ekomkassa_url}")
@@ -951,7 +1015,7 @@ def get_request_log_detail(log_id):
                    request_headers, request_body,
                    target_url, target_method, target_headers, target_body,
                    response_status, response_headers, response_body,
-                   client_response_status, client_response_body,
+                   client_response_status,
                    duration_ms, error_message, request_id
             FROM request_logs WHERE id = %s
         """, (log_id,))
@@ -978,7 +1042,7 @@ def get_request_log_detail(log_id):
             'target_headers': row[11],
             'target_body': row[12],
             'response_status': row[13],
-            'response_headers': row[14],
+            ],
             'response_body': row[15],
             'client_response_status': row[16],
             'client_response_body': row[17],
@@ -1045,48 +1109,6 @@ def replay_request(log_id):
                 response_body = resp.json()
             except:
                 response_body = {'raw': resp.text}
-
-            # Логируем повторный запрос в базу
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO request_logs (
-                    created_at, method, url, path, source_ip, user_agent,
-                    request_body, request_headers,
-                    target_url, target_method, target_body, target_headers,
-                    response_status, response_body, response_headers,
-                    client_response_status, client_response_body,
-                    duration_ms, request_id, error_message
-                ) VALUES (
-                    NOW(), %s, %s, %s, %s, %s,
-                    %s, %s,
-                    %s, %s, %s, %s,
-                    %s, %s, %s,
-                    %s, %s,
-                    %s, %s, %s
-                )
-            """, (
-                target_method,
-                target_url,
-                target_url,
-                'REPLAY',
-                'Replay Bot',
-                target_body,
-                json.dumps(headers),
-                target_url,
-                target_method,
-                target_body,
-                json.dumps(headers),
-                resp.status_code,
-                json.dumps(response_body),
-                json.dumps(dict(resp.headers)),
-                resp.status_code,
-                json.dumps(response_body),
-                duration_ms,
-                f'replay-{log_id}-{int(time.time())}',
-                None
-            ))
-            conn.commit()
-            cur.close()
             
             return jsonify({
                 'success': True,
