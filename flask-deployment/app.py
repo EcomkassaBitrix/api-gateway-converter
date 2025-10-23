@@ -1042,7 +1042,8 @@ def get_request_log_detail(log_id):
             'target_headers': row[11],
             'target_body': row[12],
             'response_status': row[13],
-            ],
+            
+            'response_headers': row[14],
             'response_body': row[15],
             'client_response_status': row[16],
             'client_response_body': row[17],
