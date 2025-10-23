@@ -297,65 +297,37 @@ def auth_handler():
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
-        # Логируем в request_logs
-        log_request_to_db(
-            method=request.method,
-            url=request.url,
-            path=request.path,
-            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
-            user_agent=request.headers.get('User-Agent', ''),
-            request_headers=dict(request.headers),
-            request_body=body_data,
-            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
-            target_method='POST',
-            target_headers={'Content-Type': 'application/json'},
-            target_body=request_payload,
-            response_status=response.status_code,
-            response_headers=dict(response.headers),
-            response_body=response_json,
-            client_response_status=response.status_code,
-            client_response_body=response_json,
-            duration_ms=duration_ms,
-            request_id=request_id
-        )
-        
         flask_response = app.response_class(
             response=response.text,
             status=response.status_code,
             mimetype='application/json'
         )
+        # Log to request_logs table
+        log_request_to_db(
+            method='POST', url=request.url, path='/api/Authorization/CreateAuthToken',
+            source_ip=request.remote_addr, user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers), request_body=body_data,
+            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_method='POST', target_headers={'Content-Type': 'application/json'},
+            target_body=request_payload,
+            response_status=response.status_code, response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code, client_response_body=response_json,
+            duration_ms=duration_ms, request_id=request_id
+        )
+
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
         return flask_response
         
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        error_msg = str(e)
-        logger.error(f"[AUTH] eKomKassa API error: {error_msg}")
-        log_to_db('auth', 'ERROR', f'eKomKassa API error: {error_msg}',
+        logger.error(f"[AUTH] eKomKassa API error: {str(e)}")
+        log_to_db('auth', 'ERROR', f'eKomKassa API error: {str(e)}',
                   request_data={'login': login},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
-        
-        # Логируем ошибку в request_logs
-        log_request_to_db(
-            method=request.method,
-            url=request.url,
-            path=request.path,
-            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
-            user_agent=request.headers.get('User-Agent', ''),
-            request_headers=dict(request.headers),
-            request_body=body_data,
-            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
-            target_method='POST',
-            client_response_status=500,
-            client_response_body={'error': error_msg},
-            duration_ms=duration_ms,
-            error_message=error_msg,
-            request_id=request_id
-        )
-        
-        return jsonify({'error': f'eKomKassa API error: {error_msg}'}), 500
+        return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
 
 
 # ============================================
@@ -427,6 +399,20 @@ def status_handler():
             status=response.status_code,
             mimetype='application/json'
         )
+        # Log to request_logs table
+        log_request_to_db(
+            method='GET', url=request.url, path='/api/kkt/cloud/status',
+            source_ip=request.remote_addr, user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers), request_body=request.args.to_dict(),
+            target_url=ekomkassa_url,
+            target_method='GET', target_headers={'Content-Type': 'application/json'},
+            target_body=None,
+            response_status=response.status_code, response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code, client_response_body=response_json,
+            duration_ms=duration_ms, request_id=request_id
+        )
+
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
         return flask_response
         
@@ -642,33 +628,25 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
-        # Логируем в request_logs
-        log_request_to_db(
-            method='POST',
-            url=request.url,
-            path=request.path,
-            source_ip=request.headers.get('X-Real-IP', request.remote_addr),
-            user_agent=request.headers.get('User-Agent', ''),
-            request_headers=dict(request.headers),
-            request_body=ferma_request,
-            target_url=ekomkassa_url,
-            target_method='POST',
-            target_headers={'Content-Type': 'application/json', 'Token': token},
-            target_body=ekomkassa_payload,
-            response_status=response.status_code,
-            response_headers=dict(response.headers),
-            response_body=response_json,
-            client_response_status=response.status_code,
-            client_response_body=response_json,
-            duration_ms=duration_ms,
-            request_id=request_id
-        )
-        
         flask_response = app.response_class(
             response=response.text,
             status=response.status_code,
             mimetype='application/json'
         )
+        # Log to request_logs table
+        log_request_to_db(
+            method='POST', url=request.url, path='/api/kkt/cloud/receipt',
+            source_ip=request.remote_addr, user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers), request_body=body_data if 'body_data' in locals() else ekomkassa_payload,
+            target_url=ekomkassa_url,
+            target_method='POST', target_headers={'Content-Type': 'application/json'},
+            target_body=body_data if 'body_data' in locals() else ekomkassa_payload,
+            response_status=response.status_code, response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code, client_response_body=response_json,
+            duration_ms=duration_ms, request_id=request_id
+        )
+
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
         return flask_response
         
@@ -733,6 +711,20 @@ def convert_simple_format(body_data: Dict[str, Any], start_time: float, request_
             status=response.status_code,
             mimetype='application/json'
         )
+        # Log to request_logs table
+        log_request_to_db(
+            method='POST', url=request.url, path='/api/kkt/cloud/receipt',
+            source_ip=request.remote_addr, user_agent=request.headers.get('User-Agent', ''),
+            request_headers=dict(request.headers), request_body=body_data if 'body_data' in locals() else ekomkassa_payload,
+            target_url=ekomkassa_url,
+            target_method='POST', target_headers={'Content-Type': 'application/json'},
+            target_body=body_data if 'body_data' in locals() else ekomkassa_payload,
+            response_status=response.status_code, response_headers=dict(response.headers),
+            response_body=response_json,
+            client_response_status=response.status_code, client_response_body=response_json,
+            duration_ms=duration_ms, request_id=request_id
+        )
+
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
         return flask_response
         
@@ -920,10 +912,10 @@ def get_request_logs():
                 'url': row[3],
                 'path': row[4],
                 'source_ip': row[5],
-                'request_body': json.loads(row[6]) if row[6] else None,
+                'request_body': row[6],
                 'target_url': row[7],
                 'response_status': row[8],
-                'response_body': json.loads(row[9]) if row[9] else None,
+                'response_body': row[9],
                 'client_response_status': row[10],
                 'duration_ms': row[11],
                 'error_message': row[12],
@@ -979,17 +971,17 @@ def get_request_log_detail(log_id):
             'path': row[4],
             'source_ip': row[5],
             'user_agent': row[6],
-            'request_headers': json.loads(row[7]) if row[7] else None,
-            'request_body': json.loads(row[8]) if row[8] else None,
+            'request_headers': row[7],
+            'request_body': row[8],
             'target_url': row[9],
             'target_method': row[10],
-            'target_headers': json.loads(row[11]) if row[11] else None,
-            'target_body': json.loads(row[12]) if row[12] else None,
+            'target_headers': row[11],
+            'target_body': row[12],
             'response_status': row[13],
-            'response_headers': json.loads(row[14]) if row[14] else None,
-            'response_body': json.loads(row[15]) if row[15] else None,
+            'response_headers': row[14],
+            'response_body': row[15],
             'client_response_status': row[16],
-            'client_response_body': json.loads(row[17]) if row[17] else None,
+            'client_response_body': row[17],
             'duration_ms': row[18],
             'error_message': row[19],
             'request_id': row[20]
@@ -998,13 +990,9 @@ def get_request_log_detail(log_id):
         cur.close()
         conn.close()
         
-        response = jsonify(log_detail)
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        return response, 200
+        return jsonify(log_detail), 200
         
     except Exception as e:
-        logger.error(f"Failed to fetch request log detail: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -1057,6 +1045,48 @@ def replay_request(log_id):
                 response_body = resp.json()
             except:
                 response_body = {'raw': resp.text}
+
+            # Логируем повторный запрос в базу
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO request_logs (
+                    created_at, method, url, path, source_ip, user_agent,
+                    request_body, request_headers,
+                    target_url, target_method, target_body, target_headers,
+                    response_status, response_body, response_headers,
+                    client_response_status, client_response_body,
+                    duration_ms, request_id, error_message
+                ) VALUES (
+                    NOW(), %s, %s, %s, %s, %s,
+                    %s, %s,
+                    %s, %s, %s, %s,
+                    %s, %s, %s,
+                    %s, %s,
+                    %s, %s, %s
+                )
+            """, (
+                target_method,
+                target_url,
+                target_url,
+                'REPLAY',
+                'Replay Bot',
+                target_body,
+                json.dumps(headers),
+                target_url,
+                target_method,
+                target_body,
+                json.dumps(headers),
+                resp.status_code,
+                json.dumps(response_body),
+                json.dumps(dict(resp.headers)),
+                resp.status_code,
+                json.dumps(response_body),
+                duration_ms,
+                f'replay-{log_id}-{int(time.time())}',
+                None
+            ))
+            conn.commit()
+            cur.close()
             
             return jsonify({
                 'success': True,
@@ -1082,189 +1112,6 @@ def replay_request(log_id):
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({'status': 'ok', 'timestamp': datetime.now().isoformat()}), 200
-
-# ============================================
-# REQUEST LOGS WEB VIEW
-# ============================================
-@app.route('/request-logs')
-def view_request_logs():
-    '''Display request logs in HTML table'''
-    try:
-        if not DATABASE_URL:
-            return "<h1>Database not configured</h1>", 500
-        
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        cur.execute("""
-            SELECT id, created_at, method, path, source_ip, 
-                   request_body, client_response_status, 
-                   client_response_body, duration_ms
-            FROM request_logs 
-            ORDER BY id DESC 
-            LIMIT 100
-        """)
-        
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        html = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Request Logs</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        th { background: #4CAF50; color: white; padding: 12px; text-align: left; position: sticky; top: 0; }
-        td { padding: 10px; border-bottom: 1px solid #ddd; }
-        tr:hover { background: #f9f9f9; }
-        .json { font-family: monospace; font-size: 12px; max-width: 300px; overflow: auto; white-space: pre-wrap; word-break: break-all; }
-        .status-200 { color: green; font-weight: bold; }
-        .status-500 { color: red; font-weight: bold; }
-        .status-other { color: orange; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h1>📊 Request Logs (Last 100)</h1>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Time</th>
-            <th>Method</th>
-            <th>Path</th>
-            <th>IP</th>
-            <th>Request Body</th>
-            <th>Status</th>
-            <th>Response Body</th>
-            <th>Duration (ms)</th>
-        </tr>
-'''
-        
-        for row in rows:
-            id_, created_at, method, path, source_ip, req_body, status, resp_body, duration = row
-            
-            status_class = 'status-200' if status == 200 else ('status-500' if status >= 500 else 'status-other')
-            
-            html += f'''
-        <tr>
-            <td>{id_}</td>
-            <td>{created_at}</td>
-            <td><strong>{method}</strong></td>
-            <td>{path}</td>
-            <td>{source_ip}</td>
-            <td class="json">{req_body or '-'}</td>
-            <td class="{status_class}">{status}</td>
-            <td class="json">{resp_body or '-'}</td>
-            <td>{duration or '-'}</td>
-        </tr>
-'''
-        
-        html += '''
-    </table>
-</body>
-</html>
-'''
-        return html
-        
-    except Exception as e:
-        logger.error(f"Failed to load request logs: {str(e)}")
-        return f"<h1>Error loading logs</h1><p>{str(e)}</p>", 500
-
-
-
-
-# ============================================
-# REQUEST LOGS WEB VIEW
-# ============================================
-@app.route('/request-logs')
-def view_request_logs():
-    '''Display request logs in HTML table'''
-    try:
-        if not DATABASE_URL:
-            return "<h1>Database not configured</h1>", 500
-        
-        conn = psycopg2.connect(DATABASE_URL)
-        cur = conn.cursor()
-        
-        cur.execute("""
-            SELECT id, created_at, method, path, source_ip, 
-                   client_request_body, client_response_status, 
-                   client_response_body, duration_ms
-            FROM request_logs 
-            ORDER BY id DESC 
-            LIMIT 100
-        """)
-        
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
-        
-        html = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Request Logs</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        th { background: #4CAF50; color: white; padding: 12px; text-align: left; position: sticky; top: 0; }
-        td { padding: 10px; border-bottom: 1px solid #ddd; }
-        tr:hover { background: #f9f9f9; }
-        .json { font-family: monospace; font-size: 12px; max-width: 300px; overflow: auto; }
-        .status-200 { color: green; font-weight: bold; }
-        .status-500 { color: red; font-weight: bold; }
-        .status-other { color: orange; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <h1>📊 Request Logs (Last 100)</h1>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Time</th>
-            <th>Method</th>
-            <th>Path</th>
-            <th>IP</th>
-            <th>Request Body</th>
-            <th>Status</th>
-            <th>Response Body</th>
-            <th>Duration (ms)</th>
-        </tr>
-'''
-        
-        for row in rows:
-            id_, created_at, method, path, source_ip, req_body, status, resp_body, duration = row
-            
-            status_class = 'status-200' if status == 200 else ('status-500' if status >= 500 else 'status-other')
-            
-            html += f'''
-        <tr>
-            <td>{id_}</td>
-            <td>{created_at}</td>
-            <td><strong>{method}</strong></td>
-            <td>{path}</td>
-            <td>{source_ip}</td>
-            <td class="json">{req_body or '-'}</td>
-            <td class="{status_class}">{status}</td>
-            <td class="json">{resp_body or '-'}</td>
-            <td>{duration or '-'}</td>
-        </tr>
-'''
-        
-        html += '''
-    </table>
-</body>
-</html>
-'''
-        return html
-        
-    except Exception as e:
-        logger.error(f"Failed to load request logs: {str(e)}")
-        return f"<h1>Error loading logs</h1><p>{str(e)}</p>", 500
 
 
 # ============================================
