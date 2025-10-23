@@ -1015,7 +1015,7 @@ def get_request_log_detail(log_id):
                    request_headers, request_body,
                    target_url, target_method, target_headers, target_body,
                    response_status, response_headers, response_body,
-                   client_response_status,
+                   client_response_status, client_response_body,
                    duration_ms, error_message, request_id
             FROM request_logs WHERE id = %s
         """, (log_id,))
