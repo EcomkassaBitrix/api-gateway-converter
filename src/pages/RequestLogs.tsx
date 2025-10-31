@@ -97,15 +97,14 @@ export default function RequestLogs() {
     const msg = log.message.toLowerCase();
     const funcName = log.function_name.toLowerCase();
     
-    if (msg.includes('incoming') || msg.includes('received request') || msg.includes('входящий')) {
+    if (msg.includes('incoming') || msg.includes('входящий')) {
       return 'API';
     }
-    if (msg.includes('converting') || msg.includes('конвертация') || msg.includes('gateway') || msg.includes('request to ekomkassa')) {
+    if (msg.includes('request to ekomkassa') || msg.includes('converting') || msg.includes('конвертация')) {
       return 'Gateway';
     }
-    if (msg.includes('ecomkassa') || msg.includes('ekomkassa') || msg.includes('екомкасса') || 
-        msg.includes('response received') || msg.includes('response from') ||
-        funcName.includes('ekomkassa') || funcName.includes('ecomkassa')) {
+    if (msg.includes('response received') || msg.includes('response from') || 
+        msg.includes('ecomkassa response') || msg.includes('ekomkassa response')) {
       return 'Ecomkassa';
     }
     return 'Unknown';
