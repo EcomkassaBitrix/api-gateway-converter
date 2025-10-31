@@ -133,10 +133,11 @@ const Index = () => {
         }
       };
       
-      if (ekomkassaResponse.error) {
+      if (!response.ok || ekomkassaResponse.error) {
+        fermaResponse.Status = 'Failed';
         fermaResponse.Error = {
-          Code: ekomkassaResponse.error.code || 0,
-          Message: ekomkassaResponse.error.text || ekomkassaResponse.error
+          Code: ekomkassaResponse.error?.code || ekomkassaResponse.error || 'UNKNOWN_ERROR',
+          Message: ekomkassaResponse.error?.text || ekomkassaResponse.error || 'Неизвестная ошибка'
         };
       }
       
