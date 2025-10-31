@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 import { getApiUrl } from '@/lib/api';
+import { setAuthCredentials, setCurrentToken, setTokenRefreshCallback } from '@/lib/apiClient';
 import StatsCards from '@/components/gateway/StatsCards';
 import AuthTab from '@/components/gateway/AuthTab';
 import SandboxTab from '@/components/gateway/SandboxTab';
@@ -24,6 +25,13 @@ const Index = () => {
   const [authToken, setAuthToken] = useState('');
   const [authResponse, setAuthResponse] = useState<any>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  useEffect(() => {
+    setTokenRefreshCallback((newToken: string) => {
+      setAuthToken(newToken);
+      toast.info('Токен автоматически обновлён');
+    });
+  }, []);
 
   const [statusForm, setStatusForm] = useState({
     uuid: '',
@@ -210,6 +218,8 @@ const Index = () => {
       if (response.ok && data.Status === 'Success' && data.Data?.AuthToken) {
         setAuthToken(data.Data.AuthToken);
         setAuthResponse(data);
+        setAuthCredentials(authForm.login, authForm.password);
+        setCurrentToken(data.Data.AuthToken);
         toast.success('Токен успешно получен');
       } else {
         const errorMsg = data.Error?.Message || data.error || 'Ошибка авторизации';
@@ -226,18 +236,28 @@ const Index = () => {
   const handleCheckStatus = async () => {
     setIsCheckingStatus(true);
     
-    try {
+    const makeStatusRequest = async (token: string) => {
       const params = new URLSearchParams({
-        AuthToken: authToken,
+        AuthToken: token,
         uuid: statusForm.uuid,
         group_code: statusForm.group_code
       });
 
-      const response = await fetch(`${getApiUrl('STATUS')}?${params}`, {
+      return fetch(`${getApiUrl('STATUS')}?${params}`, {
         method: 'GET'
       });
+    };
+    
+    try {
+      let response = await makeStatusRequest(authToken);
+      let data = await response.json();
       
-      const data = await response.json();
+      if (response.status === 401 && authForm.login && authForm.password) {
+        toast.info('Токен истёк, переавторизация...');
+        await handleAuth();
+        response = await makeStatusRequest(authToken);
+        data = await response.json();
+      }
       
       if (response.ok) {
         setStatusResult(JSON.stringify(data, null, 2));
