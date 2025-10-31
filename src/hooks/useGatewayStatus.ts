@@ -64,7 +64,7 @@ export const useGatewayStatus = ({ authToken, authForm, handleAuth }: UseGateway
       
       if (response.ok && ekomkassaResponse.status !== 'fail') {
         const statusMapping: Record<string, { code: number; name: string; message: string }> = {
-          'wait': { code: 0, name: 'NEW', message: 'Запрос на чек получен в Ferma' },
+          'wait': { code: 0, name: 'NEW', message: 'Запрос на чек получен' },
           'done': { code: 1, name: 'PROCESSED', message: 'Чек сформирован на кассе' },
           'fail': { code: -1, name: 'ERROR', message: 'Ошибка при создании чека' }
         };
