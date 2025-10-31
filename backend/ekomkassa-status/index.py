@@ -134,6 +134,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         '''Make status request to eKomKassa'''
         ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}'
         logger.info(f"[STATUS] Request to eKomKassa: {ekomkassa_url}")
+        log_to_db('ekomkassa-status', 'INFO', 'Request to eKomKassa',
+                  request_data={'uuid': uuid, 'group_code': group_code, 'endpoint': ekomkassa_url},
+                  request_id=request_id)
         return requests.get(
             ekomkassa_url,
             headers={

@@ -105,6 +105,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         request_payload = {'login': login, 'pass': password}
         logger.info(f"[AUTH] Request to eKomKassa: {json.dumps({'login': login, 'pass': '***'})}")
+        log_to_db('ekomkassa-auth', 'INFO', 'Request to eKomKassa',
+                  request_data={'login': login, 'endpoint': 'getToken'},
+                  request_id=request_id)
         
         response = requests.post(
             'https://app.ecomkassa.ru/fiscalorder/v5/getToken',

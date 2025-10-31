@@ -320,6 +320,9 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     def make_receipt_request(current_token: str) -> requests.Response:
         '''Make receipt request to eKomKassa'''
         logger.info(f"[RECEIPT-FERMA] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+        log_to_db('ekomkassa-receipt', 'INFO', 'Request to eKomKassa',
+                  request_data={'endpoint': endpoint, 'payload': atol_receipt},
+                  request_id=request_id)
         return requests.post(
             endpoint,
             json=atol_receipt,
@@ -517,6 +520,9 @@ def convert_simple_format(body_data: Dict[str, Any], login: Optional[str], passw
     def make_simple_receipt_request(current_token: str) -> requests.Response:
         '''Make simple receipt request to eKomKassa'''
         logger.info(f"[RECEIPT-SIMPLE] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+        log_to_db('ekomkassa-receipt', 'INFO', 'Request to eKomKassa',
+                  request_data={'endpoint': endpoint, 'payload': atol_receipt},
+                  request_id=request_id)
         return requests.post(
             endpoint,
             json=atol_receipt,
