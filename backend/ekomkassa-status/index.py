@@ -170,22 +170,45 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         if response.status_code == 200 and isinstance(response_json, dict):
             status_mapping = {
-                'wait': ('NEW', 'Запрос на чек получен'),
-                'done': ('DONE', 'Чек пробит успешно'),
-                'fail': ('ERROR', 'Ошибка создания чека')
+                'wait': (0, 'NEW', 'Запрос на чек получен'),
+                'done': (1, 'PROCESSED', 'Чек сформирован на кассе'),
+                'fail': (2, 'ERROR', 'Ошибка создания чека')
             }
             
             ekomkassa_status = response_json.get('status', 'wait')
-            status_name, status_message = status_mapping.get(ekomkassa_status, ('UNKNOWN', 'Неизвестный статус'))
+            status_code, status_name, status_message = status_mapping.get(ekomkassa_status, (0, 'UNKNOWN', 'Неизвестный статус'))
+            
+            ferma_data = {
+                'StatusCode': status_code,
+                'StatusName': status_name,
+                'StatusMessage': status_message,
+                'ModifiedDateUtc': response_json.get('timestamp', ''),
+                'ReceiptDateUtc': response_json.get('timestamp', '') if ekomkassa_status == 'done' else None,
+                'ModifiedDateTimeIso': response_json.get('timestamp', ''),
+                'ReceiptDateTimeIso': response_json.get('timestamp', '') if ekomkassa_status == 'done' else None,
+                'ReceiptId': uuid
+            }
+            
+            if ekomkassa_status == 'done' and response_json.get('fiscal_data'):
+                fiscal = response_json['fiscal_data']
+                ferma_data['Device'] = {
+                    'DeviceId': fiscal.get('device_id', ''),
+                    'RNM': fiscal.get('rnm', ''),
+                    'ZN': fiscal.get('zn', ''),
+                    'FN': fiscal.get('fn', ''),
+                    'FDN': fiscal.get('fdn', ''),
+                    'FPD': fiscal.get('fpd', ''),
+                    'ShiftNumber': fiscal.get('shift_number'),
+                    'ReceiptNumInShift': fiscal.get('receipt_num_in_shift', 1),
+                    'DeviceType': fiscal.get('device_type'),
+                    'OfdReceiptUrl': fiscal.get('ofd_receipt_url', '')
+                }
+            else:
+                ferma_data['Device'] = None
             
             ferma_response = {
                 'Status': 'Success',
-                'Data': {
-                    'StatusCode': 0 if ekomkassa_status == 'wait' else (1 if ekomkassa_status == 'done' else 2),
-                    'StatusName': status_name,
-                    'StatusMessage': status_message,
-                    'ReceiptId': uuid
-                },
+                'Data': ferma_data,
                 'ekomkassa_response': response_json
             }
             
