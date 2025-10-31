@@ -10,6 +10,32 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def refresh_token(login: str, password: str) -> Optional[str]:
+    '''Get new auth token from ekomkassa-auth function'''
+    try:
+        auth_url = 'https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0'
+        auth_response = requests.post(
+            auth_url,
+            json={'login': login, 'password': password},
+            timeout=10
+        )
+        if auth_response.status_code == 200:
+            auth_data = auth_response.json()
+            return auth_data.get('token')
+    except Exception as e:
+        logger.error(f"[RECEIPT] Failed to refresh token: {str(e)}")
+    return None
+
+def is_token_expired(response: requests.Response) -> bool:
+    '''Check if token is expired based on response'''
+    if response.status_code == 401:
+        return True
+    try:
+        data = response.json()
+        return data.get('error') == 'ExpiredToken' or data.get('Error', {}).get('Code') == 'ExpiredToken'
+    except:
+        return False
+
 def log_to_db(function_name: str, log_level: str, message: str, 
               request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
               request_id: Optional[str] = None, duration_ms: Optional[int] = None,
@@ -289,21 +315,36 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
-    logger.info(f"[RECEIPT-FERMA] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    def make_receipt_request(current_token: str) -> requests.Response:
+        '''Make receipt request to eKomKassa'''
+        logger.info(f"[RECEIPT-FERMA] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+        return requests.post(
+            endpoint,
+            json=atol_receipt,
+            headers={
+                'Content-Type': 'application/json',
+                'Token': current_token
+            },
+            timeout=15
+        )
+    
     log_to_db('ekomkassa-receipt', 'INFO', 'Sending Ferma format receipt to eKomKassa',
               request_data={'endpoint': endpoint, 'payload': atol_receipt},
               request_id=request_id)
     
     try:
-        response = requests.post(
-            endpoint,
-            json=atol_receipt,
-            headers={
-                'Content-Type': 'application/json',
-                'Token': token
-            },
-            timeout=15
-        )
+        response = make_receipt_request(token)
+        
+        if is_token_expired(response):
+            logger.info(f"[RECEIPT-FERMA] Token expired, attempting refresh")
+            login = os.environ.get('EKOMKASSA_LOGIN')
+            password = os.environ.get('EKOMKASSA_PASSWORD')
+            
+            if login and password:
+                new_token = refresh_token(login, password)
+                if new_token:
+                    logger.info(f"[RECEIPT-FERMA] Token refreshed, retrying request")
+                    response = make_receipt_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-FERMA] Response from eKomKassa: status={response.status_code}, body={response.text}")
@@ -426,21 +467,36 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any, start_time: f
     
     endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
-    logger.info(f"[RECEIPT-SIMPLE] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+    def make_simple_receipt_request(current_token: str) -> requests.Response:
+        '''Make simple receipt request to eKomKassa'''
+        logger.info(f"[RECEIPT-SIMPLE] Request to eKomKassa: endpoint={endpoint}, payload={json.dumps(atol_receipt, ensure_ascii=False)}")
+        return requests.post(
+            endpoint,
+            json=atol_receipt,
+            headers={
+                'Content-Type': 'application/json',
+                'Token': current_token
+            },
+            timeout=15
+        )
+    
     log_to_db('ekomkassa-receipt', 'INFO', 'Sending simple format receipt to eKomKassa',
               request_data={'endpoint': endpoint, 'payload': atol_receipt},
               request_id=request_id)
     
     try:
-        response = requests.post(
-            endpoint,
-            json=atol_receipt,
-            headers={
-                'Content-Type': 'application/json',
-                'Token': token
-            },
-            timeout=15
-        )
+        response = make_simple_receipt_request(token)
+        
+        if is_token_expired(response):
+            logger.info(f"[RECEIPT-SIMPLE] Token expired, attempting refresh")
+            login = os.environ.get('EKOMKASSA_LOGIN')
+            password = os.environ.get('EKOMKASSA_PASSWORD')
+            
+            if login and password:
+                new_token = refresh_token(login, password)
+                if new_token:
+                    logger.info(f"[RECEIPT-SIMPLE] Token refreshed, retrying request")
+                    response = make_simple_receipt_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-SIMPLE] Response from eKomKassa: status={response.status_code}, body={response.text}")

@@ -4,7 +4,7 @@ import logging
 import os
 import time
 import psycopg2
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -102,19 +102,58 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
-    ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}'
+    def refresh_token(login: str, password: str) -> Optional[str]:
+        '''Get new auth token from ekomkassa-auth function'''
+        try:
+            auth_url = 'https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0'
+            auth_response = requests.post(
+                auth_url,
+                json={'login': login, 'password': password},
+                timeout=10
+            )
+            if auth_response.status_code == 200:
+                auth_data = auth_response.json()
+                return auth_data.get('token')
+        except Exception as e:
+            logger.error(f"[STATUS] Failed to refresh token: {str(e)}")
+        return None
     
-    logger.info(f"[STATUS] Request to eKomKassa: {ekomkassa_url}")
+    def is_token_expired(response: requests.Response) -> bool:
+        '''Check if token is expired based on response'''
+        if response.status_code == 401:
+            return True
+        try:
+            data = response.json()
+            return data.get('error') == 'ExpiredToken' or data.get('Error', {}).get('Code') == 'ExpiredToken'
+        except:
+            return False
     
-    try:
-        response = requests.get(
+    def make_status_request(token: str) -> requests.Response:
+        '''Make status request to eKomKassa'''
+        ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}'
+        logger.info(f"[STATUS] Request to eKomKassa: {ekomkassa_url}")
+        return requests.get(
             ekomkassa_url,
             headers={
                 'Content-Type': 'application/json',
-                'Token': auth_token
+                'Token': token
             },
             timeout=10
         )
+    
+    try:
+        response = make_status_request(auth_token)
+        
+        if is_token_expired(response):
+            logger.info(f"[STATUS] Token expired, attempting refresh")
+            login = os.environ.get('EKOMKASSA_LOGIN')
+            password = os.environ.get('EKOMKASSA_PASSWORD')
+            
+            if login and password:
+                new_token = refresh_token(login, password)
+                if new_token:
+                    logger.info(f"[STATUS] Token refreshed, retrying request")
+                    response = make_status_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[STATUS] Response from eKomKassa: status={response.status_code}, body={response.text}")
