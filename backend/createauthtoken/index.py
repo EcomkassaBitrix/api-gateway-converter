@@ -72,17 +72,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         with urllib.request.urlopen(req, timeout=10) as response:
             ekomkassa_data = json.loads(response.read().decode('utf-8'))
         
-        print(f'eKomKassa response: {ekomkassa_data}')
-        
         ferma_response = {
-            'Token': ekomkassa_data.get('Token'),
+            'Token': ekomkassa_data.get('token'),
             'Status': {
                 'StatusCode': ekomkassa_data.get('code', 0),
                 'StatusMessage': ekomkassa_data.get('text', '')
             }
         }
-        
-        print(f'Ferma response: {ferma_response}')
         
         return {
             'statusCode': 200,
