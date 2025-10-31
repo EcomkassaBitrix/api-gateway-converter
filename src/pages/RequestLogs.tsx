@@ -31,6 +31,7 @@ export default function RequestLogs() {
   const [loading, setLoading] = useState(true);
   const [functionFilter, setFunctionFilter] = useState<string>('all');
   const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -84,15 +85,34 @@ export default function RequestLogs() {
     if (authenticated) {
       fetchLogs();
     }
-  }, [authenticated, functionFilter, levelFilter]);
+  }, [authenticated, functionFilter, levelFilter, sourceFilter]);
 
   useEffect(() => {
     if (!authenticated || !autoRefresh) return;
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
-  }, [authenticated, autoRefresh, functionFilter, levelFilter]);
+  }, [authenticated, autoRefresh, functionFilter, levelFilter, sourceFilter]);
+
+  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' | 'Unknown' => {
+    const msg = log.message.toLowerCase();
+    const reqData = JSON.stringify(log.request_data || {}).toLowerCase();
+    
+    if (msg.includes('incoming') || msg.includes('received request') || msg.includes('входящий')) {
+      return 'API';
+    }
+    if (msg.includes('converting') || msg.includes('конвертация') || msg.includes('gateway')) {
+      return 'Gateway';
+    }
+    if (msg.includes('ecomkassa') || msg.includes('екомкасса') || msg.includes('sending to ecomkassa')) {
+      return 'Ecomkassa';
+    }
+    return 'Unknown';
+  };
 
   const filteredLogs = logs.filter(log => {
+    if (sourceFilter !== 'all' && getLogSource(log) !== sourceFilter) {
+      return false;
+    }
     if (search) {
       const searchLower = search.toLowerCase();
       return (
@@ -206,7 +226,21 @@ export default function RequestLogs() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Источник</label>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все источники</SelectItem>
+                    <SelectItem value="API">API</SelectItem>
+                    <SelectItem value="Gateway">Gateway</SelectItem>
+                    <SelectItem value="Ecomkassa">Ecomkassa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <label className="text-sm font-medium mb-2 block">Функция</label>
                 <Select value={functionFilter} onValueChange={setFunctionFilter}>
@@ -278,6 +312,17 @@ export default function RequestLogs() {
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant={log.log_level === 'ERROR' ? 'destructive' : 'default'}>
                             {log.log_level}
+                          </Badge>
+                          <Badge 
+                            variant="outline"
+                            className={
+                              getLogSource(log) === 'API' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                              getLogSource(log) === 'Gateway' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                              getLogSource(log) === 'Ecomkassa' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                              ''
+                            }
+                          >
+                            {getLogSource(log)}
                           </Badge>
                           <Badge variant="outline">{log.function_name}</Badge>
                           {log.status_code && (
