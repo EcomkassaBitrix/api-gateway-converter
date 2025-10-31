@@ -93,19 +93,16 @@ export default function RequestLogs() {
     return () => clearInterval(interval);
   }, [authenticated, autoRefresh, functionFilter, levelFilter, sourceFilter]);
 
-  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' | 'Unknown' => {
+  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Unknown' => {
     const msg = log.message.toLowerCase();
-    const funcName = log.function_name.toLowerCase();
     
     if (msg.includes('incoming') || msg.includes('входящий')) {
       return 'API';
     }
-    if (msg.includes('request to ekomkassa') || msg.includes('converting') || msg.includes('конвертация')) {
+    if (msg.includes('request to') || msg.includes('response received') || 
+        msg.includes('response from') || msg.includes('converting') || 
+        msg.includes('конвертация')) {
       return 'Gateway';
-    }
-    if (msg.includes('response received') || msg.includes('response from') || 
-        msg.includes('ecomkassa response') || msg.includes('ekomkassa response')) {
-      return 'Ecomkassa';
     }
     return 'Unknown';
   };
@@ -238,7 +235,6 @@ export default function RequestLogs() {
                     <SelectItem value="all">Все источники</SelectItem>
                     <SelectItem value="API">API</SelectItem>
                     <SelectItem value="Gateway">Gateway</SelectItem>
-                    <SelectItem value="Ecomkassa">Ecomkassa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -319,7 +315,6 @@ export default function RequestLogs() {
                             className={
                               getLogSource(log) === 'API' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                               getLogSource(log) === 'Gateway' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
-                              getLogSource(log) === 'Ecomkassa' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                               ''
                             }
                           >
