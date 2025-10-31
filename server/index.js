@@ -55,6 +55,44 @@ function convertEkomkassaToFerma(ekomkassaResponse) {
   };
 }
 
+function convertStatusToFerma(ekomkassaStatusResponse) {
+  const statusMapping = {
+    'wait': 'Pending',
+    'ready': 'Ready',
+    'error': 'Error'
+  };
+  
+  const status = statusMapping[ekomkassaStatusResponse.status] || 'Pending';
+  
+  const fermaResponse = {
+    Status: 'Success',
+    Data: {
+      Status: status,
+      StatusCode: ekomkassaStatusResponse.code || 0,
+      StatusMessage: ekomkassaStatusResponse.text || '',
+      Payload: ekomkassaStatusResponse.payload || null
+    }
+  };
+  
+  if (ekomkassaStatusResponse.error) {
+    fermaResponse.Data.Error = ekomkassaStatusResponse.error;
+  }
+  
+  return fermaResponse;
+}
+
+function convertReceiptToFerma(ekomkassaReceiptResponse) {
+  return {
+    Status: 'Success',
+    Data: {
+      ReceiptId: ekomkassaReceiptResponse.uuid || ekomkassaReceiptResponse.external_id,
+      Status: ekomkassaReceiptResponse.status === 'wait' ? 'Pending' : 'Ready',
+      StatusCode: ekomkassaReceiptResponse.code || 0,
+      StatusMessage: ekomkassaReceiptResponse.text || ''
+    }
+  };
+}
+
 app.post('/api/Authorization/CreateAuthToken', async (req, res) => {
   const startTime = Date.now();
   const requestId = req.headers['x-request-id'] || `req-${Date.now()}`;
@@ -149,7 +187,8 @@ app.get('/api/kkt/cloud/status', async (req, res) => {
       durationMs,
       response.status);
     
-    res.status(response.status).json(response.data);
+    const fermaResponse = convertStatusToFerma(response.data);
+    res.status(200).json(fermaResponse);
   } catch (error) {
     const durationMs = Date.now() - startTime;
     console.error(`[STATUS] eKomKassa API error:`, error.message);
@@ -344,19 +383,20 @@ async function convertFermaToEkomkassa(req, res, fermaRequest, token, groupCode,
     });
     
     const durationMs = Date.now() - startTime;
-    console.log(`[RECEIPT] Response from eKomKassa: status=${response.status}`);
+    console.log(`[RECEIPT-FERMA] Response from eKomKassa: status=${response.status}`);
     
-    await logToDB('receipt', 'INFO', 'eKomKassa receipt response received',
+    await logToDB('receipt', 'INFO', 'eKomKassa receipt response received (Ferma format)',
       ekomkassaPayload,
       response.data,
       requestId,
       durationMs,
       response.status);
     
-    res.status(response.status).json(response.data);
+    const fermaResponse = convertReceiptToFerma(response.data);
+    res.status(200).json(fermaResponse);
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error(`[RECEIPT] eKomKassa API error:`, error.message);
+    console.error(`[RECEIPT-FERMA] eKomKassa API error:`, error.message);
     
     await logToDB('receipt', 'ERROR', `eKomKassa API error: ${error.message}`,
       ekomkassaPayload, null, requestId, durationMs, 500);
@@ -408,19 +448,20 @@ async function convertSimpleFormat(req, res, bodyData, startTime, requestId) {
     });
     
     const durationMs = Date.now() - startTime;
-    console.log(`[RECEIPT] Response from eKomKassa: status=${response.status}`);
+    console.log(`[RECEIPT-SIMPLE] Response from eKomKassa: status=${response.status}`);
     
-    await logToDB('receipt', 'INFO', 'eKomKassa receipt response received',
+    await logToDB('receipt', 'INFO', 'eKomKassa receipt response received (Simple format)',
       ekomkassaPayload,
       response.data,
       requestId,
       durationMs,
       response.status);
     
-    res.status(response.status).json(response.data);
+    const fermaResponse = convertReceiptToFerma(response.data);
+    res.status(200).json(fermaResponse);
   } catch (error) {
     const durationMs = Date.now() - startTime;
-    console.error(`[RECEIPT] eKomKassa API error:`, error.message);
+    console.error(`[RECEIPT-SIMPLE] eKomKassa API error:`, error.message);
     
     await logToDB('receipt', 'ERROR', `eKomKassa API error: ${error.message}`,
       ekomkassaPayload, null, requestId, durationMs, 500);
