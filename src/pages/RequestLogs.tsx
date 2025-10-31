@@ -95,15 +95,17 @@ export default function RequestLogs() {
 
   const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' | 'Unknown' => {
     const msg = log.message.toLowerCase();
-    const reqData = JSON.stringify(log.request_data || {}).toLowerCase();
+    const funcName = log.function_name.toLowerCase();
     
     if (msg.includes('incoming') || msg.includes('received request') || msg.includes('входящий')) {
       return 'API';
     }
-    if (msg.includes('converting') || msg.includes('конвертация') || msg.includes('gateway')) {
+    if (msg.includes('converting') || msg.includes('конвертация') || msg.includes('gateway') || msg.includes('request to ekomkassa')) {
       return 'Gateway';
     }
-    if (msg.includes('ecomkassa') || msg.includes('екомкасса') || msg.includes('sending to ecomkassa')) {
+    if (msg.includes('ecomkassa') || msg.includes('ekomkassa') || msg.includes('екомкасса') || 
+        msg.includes('response received') || msg.includes('response from') ||
+        funcName.includes('ekomkassa') || funcName.includes('ecomkassa')) {
       return 'Ecomkassa';
     }
     return 'Unknown';
