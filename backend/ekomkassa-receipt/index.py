@@ -112,16 +112,18 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
               request_id=request_id)
     
     ferma_request = body_data.get('Request')
+    login = body_data.get('login')
+    password = body_data.get('password')
     
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), body_data.get('group_code', '700'), context, start_time, request_id)
+        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), body_data.get('group_code', '700'), login, password, context, start_time, request_id)
     else:
-        result = convert_simple_format(body_data, context, start_time, request_id)
+        result = convert_simple_format(body_data, login, password, context, start_time, request_id)
     
     return result
 
 
-def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
+def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
     if not token:
@@ -335,16 +337,12 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     try:
         response = make_receipt_request(token)
         
-        if is_token_expired(response):
+        if is_token_expired(response) and login and password:
             logger.info(f"[RECEIPT-FERMA] Token expired, attempting refresh")
-            login = os.environ.get('EKOMKASSA_LOGIN')
-            password = os.environ.get('EKOMKASSA_PASSWORD')
-            
-            if login and password:
-                new_token = refresh_token(login, password)
-                if new_token:
-                    logger.info(f"[RECEIPT-FERMA] Token refreshed, retrying request")
-                    response = make_receipt_request(new_token)
+            new_token = refresh_token(login, password)
+            if new_token:
+                logger.info(f"[RECEIPT-FERMA] Token refreshed, retrying request")
+                response = make_receipt_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-FERMA] Response from eKomKassa: status={response.status_code}, body={response.text}")
@@ -383,7 +381,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
 
 
-def convert_simple_format(body_data: Dict[str, Any], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
+def convert_simple_format(body_data: Dict[str, Any], login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
     '''Конвертация упрощенного формата (для обратной совместимости)'''
     
     operation = body_data.get('operation', 'sell')
@@ -487,16 +485,12 @@ def convert_simple_format(body_data: Dict[str, Any], context: Any, start_time: f
     try:
         response = make_simple_receipt_request(token)
         
-        if is_token_expired(response):
+        if is_token_expired(response) and login and password:
             logger.info(f"[RECEIPT-SIMPLE] Token expired, attempting refresh")
-            login = os.environ.get('EKOMKASSA_LOGIN')
-            password = os.environ.get('EKOMKASSA_PASSWORD')
-            
-            if login and password:
-                new_token = refresh_token(login, password)
-                if new_token:
-                    logger.info(f"[RECEIPT-SIMPLE] Token refreshed, retrying request")
-                    response = make_simple_receipt_request(new_token)
+            new_token = refresh_token(login, password)
+            if new_token:
+                logger.info(f"[RECEIPT-SIMPLE] Token refreshed, retrying request")
+                response = make_simple_receipt_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[RECEIPT-SIMPLE] Response from eKomKassa: status={response.status_code}, body={response.text}")

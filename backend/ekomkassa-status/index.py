@@ -80,6 +80,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     auth_token = params.get('AuthToken')
     group_code = params.get('group_code', '700')
     uuid = params.get('uuid')
+    login = params.get('login')
+    password = params.get('password')
     
     logger.info(f"[STATUS] Incoming request: uuid={uuid}, group_code={group_code}, token={'***' if auth_token else None}")
     log_to_db('ekomkassa-status', 'INFO', 'Incoming status check request',
@@ -144,16 +146,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     try:
         response = make_status_request(auth_token)
         
-        if is_token_expired(response):
+        if is_token_expired(response) and login and password:
             logger.info(f"[STATUS] Token expired, attempting refresh")
-            login = os.environ.get('EKOMKASSA_LOGIN')
-            password = os.environ.get('EKOMKASSA_PASSWORD')
-            
-            if login and password:
-                new_token = refresh_token(login, password)
-                if new_token:
-                    logger.info(f"[STATUS] Token refreshed, retrying request")
-                    response = make_status_request(new_token)
+            new_token = refresh_token(login, password)
+            if new_token:
+                logger.info(f"[STATUS] Token refreshed, retrying request")
+                response = make_status_request(new_token)
         
         duration_ms = int((time.time() - start_time) * 1000)
         logger.info(f"[STATUS] Response from eKomKassa: status={response.status_code}, body={response.text}")

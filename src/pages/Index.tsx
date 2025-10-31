@@ -240,7 +240,9 @@ const Index = () => {
       const params = new URLSearchParams({
         AuthToken: token,
         uuid: statusForm.uuid,
-        group_code: statusForm.group_code
+        group_code: statusForm.group_code,
+        ...(authForm.login && { login: authForm.login }),
+        ...(authForm.password && { password: authForm.password })
       });
 
       return fetch(`${getApiUrl('STATUS')}?${params}`, {
