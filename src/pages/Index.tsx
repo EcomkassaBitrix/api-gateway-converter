@@ -1,9 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
-import { toast } from 'sonner';
-import { getApiUrl } from '@/lib/api';
-import { setAuthCredentials, setCurrentToken, setTokenRefreshCallback } from '@/lib/apiClient';
 import StatsCards from '@/components/gateway/StatsCards';
 import AuthTab from '@/components/gateway/AuthTab';
 import SandboxTab from '@/components/gateway/SandboxTab';
@@ -11,404 +7,85 @@ import StatusTab from '@/components/gateway/StatusTab';
 import DocsTab from '@/components/gateway/DocsTab';
 import LogsTab from '@/components/gateway/LogsTab';
 import AnalyticsTab from '@/components/gateway/AnalyticsTab';
+import { useGatewayAuth } from '@/hooks/useGatewayAuth';
+import { useGatewaySandbox } from '@/hooks/useGatewaySandbox';
+import { useGatewayStatus } from '@/hooks/useGatewayStatus';
+import { useGatewayStats } from '@/hooks/useGatewayStats';
+import { useGatewayLogs } from '@/hooks/useGatewayLogs';
 
 const Index = () => {
-  const [fermaInput, setFermaInput] = useState('');
-  const [atolOutput, setAtolOutput] = useState('');
-  const [fermaOutput, setFermaOutput] = useState('');
-  const [isConverting, setIsConverting] = useState(false);
-  const [usedInvoiceIds, setUsedInvoiceIds] = useState<Record<string, Set<string>>>({});
-  
-  const [authForm, setAuthForm] = useState({
-    login: '',
-    password: ''
-  });
-  const [authToken, setAuthToken] = useState('');
-  const [authResponse, setAuthResponse] = useState<any>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const {
+    authForm,
+    setAuthForm,
+    authToken,
+    authResponse,
+    isAuthenticating,
+    handleAuth
+  } = useGatewayAuth();
 
-  useEffect(() => {
-    setTokenRefreshCallback((newToken: string) => {
-      setAuthToken(newToken);
-      toast.info('Токен автоматически обновлён');
-    });
-  }, []);
+  const {
+    fermaInput,
+    setFermaInput,
+    atolOutput,
+    fermaOutput,
+    isConverting,
+    handleConvert,
+    loadExample,
+    loadCorrectionExample
+  } = useGatewaySandbox({ authToken, authForm });
 
-  const [statusForm, setStatusForm] = useState({
-    uuid: '',
-    group_code: '700'
-  });
-  const [statusResult, setStatusResult] = useState('');
-  const [statusConverterResult, setStatusConverterResult] = useState('');
-  const [isCheckingStatus, setIsCheckingStatus] = useState(false);
-  const [stats, setStats] = useState({
-    total_requests: 0,
-    successful_requests: 0,
-    error_requests: 0,
-    avg_duration_ms: 0
-  });
+  const {
+    statusForm,
+    setStatusForm,
+    statusResult,
+    statusConverterResult,
+    isCheckingStatus,
+    handleCheckStatus
+  } = useGatewayStatus({ authToken, authForm, handleAuth });
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch(getApiUrl('STATS'));
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
-      }
-    };
-    fetchStats();
-    const interval = setInterval(fetchStats, 10000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const exampleFermaRequest = {
-    "Request": {
-      "Inn": "0123456789",
-      "Type": "Income",
-      "InvoiceId": "6f000fee-bbac-4444-bda1-e9ce9999fcc7",
-      "CallbackUrl": "https://webhook.site/0c01f3ef-597e-43d8-8463-4c1b942d3ea2",
-      "CustomerReceipt": {
-        "TaxationSystem": "Common",
-        "CashlessPayments": [
-          {
-            "PaymentSum": 5328.53,
-            "PaymentMethodFlag": "1",
-            "PaymentIdentifiers": "132",
-            "AdditionalInformation": "Полная оплата безналичными"
-          }
-        ],
-        "Email": "example@ya.ru",
-        "Phone": "+79000000001",
-        "PaymentType": 4,
-        "Items": [
-          {
-            "Label": "Оплата услуг по страхованию.",
-            "Price": 5328.53,
-            "Quantity": 1.0,
-            "Amount": 5328.53,
-            "Vat": "VatNo",
-            "MarkingCode": null,
-            "PaymentMethod": 4,
-            "Measure": "PIECE"
-          }
-        ],
-        "PaymentItems": null,
-        "CustomUserProperty": null
-      }
-    },
-    "group_code": "700"
-  };
-
-  const handleConvert = async () => {
-    setIsConverting(true);
-    
-    try {
-      const fermaData = JSON.parse(fermaInput);
-      
-      const response = await fetch(getApiUrl('RECEIPT'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...fermaData,
-          token: authToken,
-          login: authForm.login,
-          password: authForm.password
-        })
-      });
-      
-      const data = await response.json();
-      
-      const ekomkassaResponse = data.ekomkassa_response || data;
-      setAtolOutput(JSON.stringify(ekomkassaResponse, null, 2));
-      
-      const fermaResponse: any = {
-        Status: response.ok ? 'Success' : 'Failed',
-        Data: {
-          ReceiptId: ekomkassaResponse.uuid || ''
-        }
-      };
-      
-      if (!response.ok || ekomkassaResponse.error) {
-        fermaResponse.Status = 'Failed';
-        fermaResponse.Error = {
-          Code: ekomkassaResponse.error?.code || ekomkassaResponse.error || 'UNKNOWN_ERROR',
-          Message: ekomkassaResponse.error?.text || ekomkassaResponse.error || 'Неизвестная ошибка'
-        };
-      }
-      
-      setFermaOutput(JSON.stringify(fermaResponse, null, 2));
-      
-      if (response.ok) {
-        toast.success('Чек успешно создан');
-      } else {
-        const errorMsg = data.error?.text || data.error || 'Ошибка создания чека';
-        toast.error(errorMsg);
-      }
-    } catch (error) {
-      toast.error('Ошибка парсинга или связи');
-      console.error('Convert error:', error);
-    } finally {
-      setIsConverting(false);
-    }
-  };
-
-  const exampleCorrectionRequest = {
-    "Request": {
-      "Inn": "0123456789",
-      "Type": "IncomeCorrection",
-      "InvoiceId": "test2_8744273567_u12",
-      "CallbackUrl": "https://webhook.site/0c01f3ef-597e-43d8-8463-4c1b942d3ea2",
-      "CustomerReceipt": {
-        "TaxationSystem": "Common",
-        "CashlessPayments": [
-          {
-            "PaymentSum": 1,
-            "PaymentMethodFlag": "1",
-            "PaymentIdentifiers": "132",
-            "AdditionalInformation": "Полная оплата безналичными"
-          }
-        ],
-        "Email": "example@mail.ru",
-        "Phone": null,
-        "CorrectionInfo": {
-          "Type": "SELF",
-          "Description": "Самостоятельная операция",
-          "ReceiptDate": "15.08.2019",
-          "ReceiptId": "1"
-        },
-        "Items": [
-          {
-            "Label": "Расходы",
-            "Price": 1,
-            "Quantity": 1,
-            "Amount": 1,
-            "Vat": "CalculatedVat20120",
-            "PaymentMethod": 4,
-            "Measure": "PIECE",
-            "PaymentType": 4
-          }
-        ]
-      }
-    },
-    "group_code": "700"
-  };
-
-  const generateInvoiceId = (groupCode: string): string => {
-    const prefix = 'APIGW';
-    const datePart = new Date().getTime();
-    const randomPart = Math.floor(Math.random() * 1000000);
-    
-    let invoiceId = `${prefix}_${datePart}_${randomPart}`;
-    
-    if (!usedInvoiceIds[groupCode]) {
-      usedInvoiceIds[groupCode] = new Set();
-    }
-    
-    while (usedInvoiceIds[groupCode].has(invoiceId)) {
-      const newRandomPart = Math.floor(Math.random() * 1000000);
-      invoiceId = `${prefix}_${datePart}_${newRandomPart}`;
-    }
-    
-    const newUsedIds = { ...usedInvoiceIds };
-    if (!newUsedIds[groupCode]) {
-      newUsedIds[groupCode] = new Set();
-    }
-    newUsedIds[groupCode].add(invoiceId);
-    setUsedInvoiceIds(newUsedIds);
-    
-    return invoiceId;
-  };
-
-  const loadExample = () => {
-    const example = JSON.parse(JSON.stringify(exampleFermaRequest));
-    const groupCode = example.group_code || '700';
-    example.Request.InvoiceId = generateInvoiceId(groupCode);
-    
-    setFermaInput(JSON.stringify(example, null, 2));
-    toast.info('Загружен пример продажи');
-  };
-
-  const loadCorrectionExample = () => {
-    const example = JSON.parse(JSON.stringify(exampleCorrectionRequest));
-    const groupCode = example.group_code || '700';
-    example.Request.InvoiceId = generateInvoiceId(groupCode);
-    
-    setFermaInput(JSON.stringify(example, null, 2));
-    toast.info('Загружен пример коррекции');
-  };
-
-  const handleAuth = async () => {
-    setIsAuthenticating(true);
-    
-    try {
-      const response = await fetch(getApiUrl('AUTH'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          login: authForm.login,
-          password: authForm.password
-        })
-      });
-      
-      let data;
-      try {
-        data = await response.json();
-      } catch (e) {
-        data = { error: 'Некорректный ответ от сервера' };
-      }
-      
-      if (response.ok && data.Status === 'Success' && data.Data?.AuthToken) {
-        setAuthToken(data.Data.AuthToken);
-        setAuthResponse(data);
-        setAuthCredentials(authForm.login, authForm.password);
-        setCurrentToken(data.Data.AuthToken);
-        toast.success('Токен успешно получен');
-      } else {
-        const errorMsg = data.Error?.Message || data.error || `Ошибка авторизации (HTTP ${response.status})`;
-        toast.error(errorMsg);
-        setAuthResponse(data);
-      }
-    } catch (error) {
-      toast.error('Ошибка связи с сервером');
-      console.error('Auth error:', error);
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
-  const handleCheckStatus = async () => {
-    setIsCheckingStatus(true);
-    
-    const makeStatusRequest = async (token: string) => {
-      const params = new URLSearchParams({
-        AuthToken: token,
-        uuid: statusForm.uuid,
-        group_code: statusForm.group_code,
-        ...(authForm.login && { login: authForm.login }),
-        ...(authForm.password && { password: authForm.password })
-      });
-
-      return fetch(`${getApiUrl('STATUS')}?${params}`, {
-        method: 'GET'
-      });
-    };
-    
-    try {
-      let response = await makeStatusRequest(authToken);
-      let data = await response.json();
-      
-      const isTokenExpired = response.status === 401 || 
-                             data.error === 'ExpiredToken' || 
-                             data.Error?.Code === 'ExpiredToken';
-      
-      if (isTokenExpired && authForm.login && authForm.password) {
-        toast.info('Токен истёк, переавторизация...');
-        await handleAuth();
-        response = await makeStatusRequest(authToken);
-        data = await response.json();
-      }
-      
-      const ekomkassaResponse = data.ekomkassa_response || data;
-      setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
-      
-      const converterResponse: any = {
-        Status: response.ok && ekomkassaResponse.status !== 'fail' ? 'Success' : 'Failed',
-        Data: {} as any
-      };
-      
-      if (response.ok && ekomkassaResponse.status !== 'fail') {
-        const statusMapping: Record<string, { code: number; name: string; message: string }> = {
-          'wait': { code: 0, name: 'NEW', message: 'Запрос на чек получен в Ferma' },
-          'done': { code: 1, name: 'PROCESSED', message: 'Чек сформирован на кассе' },
-          'fail': { code: -1, name: 'ERROR', message: 'Ошибка при создании чека' }
-        };
-        
-        const statusInfo = statusMapping[ekomkassaResponse.status] || statusMapping['wait'];
-        
-        converterResponse.Data = {
-          StatusCode: statusInfo.code,
-          StatusName: statusInfo.name,
-          StatusMessage: statusInfo.message,
-          ModifiedDateUtc: ekomkassaResponse.timestamp || new Date().toISOString(),
-          ReceiptDateUtc: ekomkassaResponse.status === 'done' ? (ekomkassaResponse.timestamp || new Date().toISOString()) : null,
-          ModifiedDateTimeIso: ekomkassaResponse.timestamp || new Date().toISOString(),
-          ReceiptDateTimeIso: ekomkassaResponse.status === 'done' ? (ekomkassaResponse.timestamp || new Date().toISOString()) : null,
-          ReceiptId: ekomkassaResponse.uuid || ''
-        };
-        
-        if (ekomkassaResponse.status === 'done' && ekomkassaResponse.payload) {
-          converterResponse.Data.Device = {
-            DeviceId: ekomkassaResponse.payload.device_sn || null,
-            RNM: ekomkassaResponse.payload.device_rn || null,
-            ZN: ekomkassaResponse.payload.zn || null,
-            FN: ekomkassaResponse.payload.fn || null,
-            FDN: ekomkassaResponse.payload.fiscal_document_number?.toString() || null,
-            FPD: ekomkassaResponse.payload.fiscal_document_attribute?.toString() || null,
-            ShiftNumber: ekomkassaResponse.payload.shift_number || null,
-            ReceiptNumInShift: ekomkassaResponse.payload.receipt_number_in_shift || null,
-            DeviceType: null,
-            OfdReceiptUrl: ekomkassaResponse.payload.ofd_receipt_url || null
-          };
-        } else {
-          converterResponse.Data.Device = null;
-        }
-      } else {
-        converterResponse.Error = {
-          Code: ekomkassaResponse.error?.code || 'UNKNOWN_ERROR',
-          Message: ekomkassaResponse.error?.text || 'Ошибка проверки статуса'
-        };
-      }
-      
-      setStatusConverterResult(JSON.stringify(converterResponse, null, 2));
-      
-      if (response.ok) {
-        if (ekomkassaResponse.status === 'done') {
-          toast.success('Чек успешно пробит');
-        } else if (ekomkassaResponse.status === 'wait') {
-          toast.info('Чек в очереди на обработку');
-        } else if (ekomkassaResponse.status === 'fail') {
-          toast.error('Ошибка при создании чека');
-        }
-      } else {
-        const errorMsg = ekomkassaResponse.error?.text || ekomkassaResponse.error || 'Ошибка проверки статуса';
-        toast.error(errorMsg);
-      }
-    } catch (error) {
-      toast.error('Ошибка связи с сервером');
-      console.error('Status check error:', error);
-    } finally {
-      setIsCheckingStatus(false);
-    }
-  };
+  const stats = useGatewayStats();
+  const recentLogs = useGatewayLogs();
 
   const statsData = [
-    { label: 'Всего запросов', value: stats.total_requests.toLocaleString(), icon: 'Activity', trend: '' },
-    { label: 'Успешных', value: stats.successful_requests.toLocaleString(), icon: 'CheckCircle2', trend: '' },
-    { label: 'Ошибок', value: stats.error_requests.toLocaleString(), icon: 'AlertCircle', trend: '' },
-    { label: 'Средн. время', value: `${stats.avg_duration_ms}ms`, icon: 'Clock', trend: '' },
-  ];
-
-  const recentLogs = [
-    { id: 1, status: 'success', method: 'sell', time: '14:32:15', duration: '98ms' },
-    { id: 2, status: 'success', method: 'refund', time: '14:31:42', duration: '112ms' },
-    { id: 3, status: 'error', method: 'sell', time: '14:30:18', duration: '245ms' },
-    { id: 4, status: 'success', method: 'sell_correction', time: '14:28:55', duration: '87ms' },
+    {
+      title: 'Всего запросов',
+      value: stats.total_requests.toString(),
+      icon: 'Activity' as const,
+      trend: '+12.5%',
+      description: 'За последние 24 часа'
+    },
+    {
+      title: 'Успешных',
+      value: stats.successful_requests.toString(),
+      icon: 'CheckCircle2' as const,
+      trend: '+8.2%',
+      description: 'Без ошибок',
+      positive: true
+    },
+    {
+      title: 'С ошибками',
+      value: stats.error_requests.toString(),
+      icon: 'XCircle' as const,
+      trend: '-3.1%',
+      description: 'Требуют внимания',
+      positive: false
+    },
+    {
+      title: 'Среднее время',
+      value: `${stats.avg_duration_ms.toFixed(0)}ms`,
+      icon: 'Clock' as const,
+      trend: '-15.3%',
+      description: 'Время обработки',
+      positive: true
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto py-8 px-4 max-w-7xl">
-        <header className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary rounded-lg">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        <header className="text-center space-y-2 animate-fade-in">
+          <div className="flex items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
               <Icon name="Zap" className="text-white" size={24} />
             </div>
             <h1 className="text-3xl font-bold text-secondary">API Gateway</h1>
@@ -467,6 +144,7 @@ const Index = () => {
               handleConvert={handleConvert}
               loadExample={loadExample}
               loadCorrectionExample={loadCorrectionExample}
+              authToken={authToken}
             />
           </TabsContent>
 
