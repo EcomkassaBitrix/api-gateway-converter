@@ -1,5 +1,5 @@
 export const FUNCTION_URLS = {
-  AUTH: 'https://functions.poehali.dev/4f591135-3b64-4faf-b0b5-32c626cc7175',
+  AUTH: 'https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0',
   RECEIPT: 'https://functions.poehali.dev/280868cd-939a-438a-8138-b54195ce8005',
   STATUS: 'https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a',
   LOGS: 'https://functions.poehali.dev/ed40a7a0-1c4e-47c5-b69a-bbe27853e591',
