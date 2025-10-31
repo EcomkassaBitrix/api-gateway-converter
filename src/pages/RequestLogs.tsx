@@ -93,7 +93,7 @@ export default function RequestLogs() {
     return () => clearInterval(interval);
   }, [authenticated, autoRefresh, functionFilter, levelFilter, sourceFilter]);
 
-  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' | 'Unknown' => {
+  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' => {
     const msg = log.message.toLowerCase();
     
     // API - входящие запросы от клиента и исходящие ответы клиенту
@@ -107,14 +107,8 @@ export default function RequestLogs() {
       return 'Ecomkassa';
     }
     
-    // Gateway - внутренняя обработка и запросы в Ecomkassa
-    if (msg.includes('request to') || msg.includes('запрос в') ||
-        msg.includes('converting') || msg.includes('конвертация') ||
-        msg.includes('processing') || msg.includes('обработка')) {
-      return 'Gateway';
-    }
-    
-    return 'Unknown';
+    // Gateway - всё остальное (внутренняя обработка, запросы в Ecomkassa, и т.д.)
+    return 'Gateway';
   };
 
   const filteredLogs = logs.filter(log => {
