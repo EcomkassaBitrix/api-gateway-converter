@@ -16,10 +16,10 @@ const DocsTab = () => {
         <div>
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Badge variant="default">POST</Badge>
-            <code className="text-sm">/api/auth/token</code>
+            <code className="text-sm">/api/Authorization/CreateAuthToken</code>
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Получение токена авторизации (Ferma AuthToken → eKomKassa getToken)
+            Получение токена авторизации (Ferma-совместимый путь)
           </p>
           <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800 mb-4">
             <p className="text-xs text-blue-700 dark:text-blue-300">
@@ -66,10 +66,10 @@ const DocsTab = () => {
         <div className="border-t pt-6">
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Badge variant="default">POST</Badge>
-            <code className="text-sm">/api/convert/ferma-to-atol</code>
+            <code className="text-sm">/api/kkt/cloud/receipt</code>
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Конвертирует запрос из формата Ferma в формат eKomKassa (Атол v5)
+            Создание чека (Ferma-совместимый путь → eKomKassa)
           </p>
           <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800 mb-4">
             <p className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
@@ -230,10 +230,10 @@ const DocsTab = () => {
         <div className="border-t pt-6">
           <h3 className="font-semibold mb-3 flex items-center gap-2">
             <Badge variant="default">GET</Badge>
-            <code className="text-sm">/api/convert/ferma-status</code>
+            <code className="text-sm">/api/kkt/cloud/status</code>
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Получение статуса чека из eKomKassa (аналог Ferma Status API)
+            Получение статуса чека (Ferma-совместимый путь)
           </p>
           <div className="p-2 bg-blue-50 dark:bg-blue-950 rounded border border-blue-200 dark:border-blue-800 mb-4">
             <p className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
@@ -253,7 +253,7 @@ const DocsTab = () => {
               <h4 className="text-sm font-semibold mb-2">Query параметры:</h4>
               <div className="bg-muted p-3 rounded-lg font-mono text-xs mb-4">
                 <div className="space-y-1">
-                  <div><span className="text-primary">AuthToken</span>: string <span className="text-muted-foreground">// Обязательно, токен из /api/convert/ferma-auth</span></div>
+                  <div><span className="text-primary">AuthToken</span>: string <span className="text-muted-foreground">// Обязательно, токен из /api/Authorization/CreateAuthToken</span></div>
                   <div><span className="text-primary">uuid</span>: string <span className="text-muted-foreground">// Обязательно, UUID чека</span></div>
                   <div><span className="text-primary">group_code</span>: string <span className="text-muted-foreground">// Опционально, код группы ККТ (по умолчанию "700")</span></div>
                 </div>
@@ -263,7 +263,7 @@ const DocsTab = () => {
             <div>
               <h4 className="text-sm font-semibold mb-2">Пример запроса:</h4>
               <div className="bg-muted p-3 rounded-lg font-mono text-xs overflow-x-auto">
-                <code>GET /api/convert/ferma-status?AuthToken=ваш_токен&uuid=550e8400-e29b-41d4-a716-446655440000&group_code=700</code>
+                <code>GET /api/kkt/cloud/status?AuthToken=ваш_токен&uuid=550e8400-e29b-41d4-a716-446655440000&group_code=700</code>
               </div>
             </div>
 
