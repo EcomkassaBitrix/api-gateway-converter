@@ -126,16 +126,19 @@ const Index = () => {
       const ekomkassaResponse = data.ekomkassa_response || data;
       setAtolOutput(JSON.stringify(ekomkassaResponse, null, 2));
       
-      const fermaResponse = {
+      const fermaResponse: any = {
         Status: response.ok ? 'Success' : 'Failed',
         Data: {
           ReceiptId: ekomkassaResponse.uuid || ''
-        },
-        Error: ekomkassaResponse.error ? {
+        }
+      };
+      
+      if (ekomkassaResponse.error) {
+        fermaResponse.Error = {
           Code: ekomkassaResponse.error.code || 0,
           Message: ekomkassaResponse.error.text || ekomkassaResponse.error
-        } : null
-      };
+        };
+      }
       
       setFermaOutput(JSON.stringify(fermaResponse, null, 2));
       
