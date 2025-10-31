@@ -32,6 +32,7 @@ export default function RequestLogs() {
   const [functionFilter, setFunctionFilter] = useState<string>('all');
   const [levelFilter, setLevelFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [directionFilter, setDirectionFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
@@ -124,6 +125,11 @@ export default function RequestLogs() {
   const filteredLogs = logs.filter(log => {
     if (sourceFilter !== 'all' && getLogSource(log) !== sourceFilter) {
       return false;
+    }
+    if (directionFilter !== 'all') {
+      const isReq = isRequest(log);
+      if (directionFilter === 'request' && !isReq) return false;
+      if (directionFilter === 'response' && isReq) return false;
     }
     if (search) {
       const searchLower = search.toLowerCase();
@@ -238,7 +244,7 @@ export default function RequestLogs() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">Источник</label>
                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
@@ -250,6 +256,19 @@ export default function RequestLogs() {
                     <SelectItem value="API">API</SelectItem>
                     <SelectItem value="Gateway">Gateway</SelectItem>
                     <SelectItem value="Ecomkassa">Ecomkassa</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Направление</label>
+                <Select value={directionFilter} onValueChange={setDirectionFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все</SelectItem>
+                    <SelectItem value="request">→ Запрос</SelectItem>
+                    <SelectItem value="response">← Ответ</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
