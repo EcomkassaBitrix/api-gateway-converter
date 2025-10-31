@@ -76,23 +76,34 @@ const AuthTab = ({ authForm, setAuthForm, authToken, authResponse, isAuthenticat
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Icon name="Shield" size={20} />
-            Ferma Response
+            Ответы API
           </CardTitle>
-          <CardDescription>Ответ в формате Ferma API</CardDescription>
+          <CardDescription>Ferma (слева) и eKomKassa (справа)</CardDescription>
         </CardHeader>
         <CardContent>
           {authResponse ? (
             <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon name="CheckCircle2" size={16} className="text-green-500" />
-                  <span className="text-sm font-medium">Токен получен</span>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs mb-2 block">Ferma Response</Label>
+                  <Textarea
+                    value={JSON.stringify({
+                      Status: authResponse.Status,
+                      Data: authResponse.Data,
+                      Error: authResponse.Error
+                    }, null, 2)}
+                    readOnly
+                    className="font-mono text-xs min-h-[200px] bg-background"
+                  />
                 </div>
-                <Textarea
-                  value={JSON.stringify(authResponse, null, 2)}
-                  readOnly
-                  className="font-mono text-xs min-h-[200px] bg-background"
-                />
+                <div>
+                  <Label className="text-xs mb-2 block">eKomKassa Response</Label>
+                  <Textarea
+                    value={JSON.stringify(authResponse.ekomkassa_response || {}, null, 2)}
+                    readOnly
+                    className="font-mono text-xs min-h-[200px] bg-background"
+                  />
+                </div>
               </div>
               
               <div className="space-y-2">

@@ -126,7 +126,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Status': 'Success',
                 'Data': {
                     'AuthToken': response_json['token']
-                }
+                },
+                'ekomkassa_response': response_json
             }
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa response received',
                       request_data={'login': login},
@@ -150,7 +151,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Error': {
                     'Code': response.status_code,
                     'Message': error_message
-                }
+                },
+                'ekomkassa_response': response_json
             }
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa error response received',
                       request_data={'login': login},
