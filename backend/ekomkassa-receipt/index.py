@@ -359,12 +359,38 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
-        return {
-            'statusCode': response.status_code,
-            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': response.text,
-            'isBase64Encoded': False
-        }
+        if response.status_code == 200:
+            ferma_response = {
+                'Status': 'Success',
+                'Data': {}
+            }
+            return {
+                'statusCode': 200,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_response),
+                'isBase64Encoded': False
+            }
+        else:
+            error_code = 0
+            error_message = 'Unknown error'
+            
+            if isinstance(response_json, dict):
+                error_message = response_json.get('error', {}).get('text', response_json.get('error', 'Unknown error'))
+                error_code = response_json.get('error', {}).get('error_id', response.status_code)
+            
+            ferma_error = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code if error_code != 0 else response.status_code,
+                    'Message': str(error_message)
+                }
+            }
+            return {
+                'statusCode': response.status_code,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_error),
+                'isBase64Encoded': False
+            }
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[RECEIPT-FERMA] eKomKassa API error: {str(e)}")
@@ -373,10 +399,17 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 500,
+                'Message': f'eKomKassa API error: {str(e)}'
+            }
+        }
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': json.dumps({'error': f'eKomKassa API error: {str(e)}'}),
+            'body': json.dumps(ferma_error),
             'isBase64Encoded': False
         }
 
