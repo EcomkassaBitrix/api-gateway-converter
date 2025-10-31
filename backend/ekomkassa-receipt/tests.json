@@ -36,29 +36,40 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Test valid receipt request",
+      "name": "Test Ferma format success",
       "method": "POST",
       "path": "/",
       "body": {
-        "operation": "sell",
-        "token": "test_token_123",
-        "group_code": "700",
-        "items": [
-          {
-            "name": "Товар 1",
-            "price": 100.50,
-            "quantity": 2,
-            "tax": "vat20"
+        "Request": {
+          "Type": "Income",
+          "InvoiceId": "test_invoice_123",
+          "CustomerReceipt": {
+            "TaxationSystem": "Common",
+            "Email": "test@example.com",
+            "Items": [
+              {
+                "Label": "Тестовый товар",
+                "Price": 100.0,
+                "Quantity": 1.0,
+                "Amount": 100.0,
+                "Vat": "Vat20",
+                "PaymentMethod": 4
+              }
+            ],
+            "CashlessPayments": [
+              {
+                "PaymentSum": 100.0
+              }
+            ]
           }
-        ],
-        "payments": [
-          {
-            "type": "card",
-            "sum": 201.00
-          }
-        ]
+        },
+        "token": "test_token",
+        "group_code": "700"
       },
       "expectedStatus": [200, 401, 500],
+      "expectedBody": {
+        "Status": "string"
+      },
       "bodyMatcher": "partial"
     }
   ]
