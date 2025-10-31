@@ -111,6 +111,16 @@ export default function RequestLogs() {
     return 'Gateway';
   };
 
+  const isRequest = (log: RequestLog): boolean => {
+    const msg = log.message.toLowerCase();
+    return msg.includes('incoming') || msg.includes('входящий') || 
+           msg.includes('request to') || msg.includes('запрос');
+  };
+
+  const getSourceIcon = (log: RequestLog): string => {
+    return isRequest(log) ? '→' : '←';
+  };
+
   const filteredLogs = logs.filter(log => {
     if (sourceFilter !== 'all' && getLogSource(log) !== sourceFilter) {
       return false;
@@ -324,7 +334,7 @@ export default function RequestLogs() {
                               ''
                             }
                           >
-                            {getLogSource(log)}
+                            {getSourceIcon(log)} {getLogSource(log)}
                           </Badge>
                           <Badge variant="outline">{log.function_name}</Badge>
                           {log.status_code && (
