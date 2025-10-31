@@ -21,12 +21,12 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Valid request with default group_code",
+      "name": "Invalid token returns error",
       "method": "GET",
-      "path": "/?AuthToken=invalid-token&uuid=test-uuid-123",
-      "expectedStatus": 400,
+      "path": "/?AuthToken=invalid-token&uuid=12345678&group_code=700",
+      "expectedStatus": 401,
       "expectedBody": {
-        "status": "fail"
+        "Status": "Failed"
       },
       "bodyMatcher": "partial"
     }

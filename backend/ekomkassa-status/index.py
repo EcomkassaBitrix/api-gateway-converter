@@ -48,7 +48,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     Business: Ferma-совместимый API для получения статуса чека
     Ferma URL: GET https://ferma.ofd.ru/api/kkt/cloud/status?uuid={uuid}&AuthToken={token}
     Gateway URL: GET https://{gateway}/api/kkt/cloud/status?uuid={uuid}&AuthToken={token}
-    Target: https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}
+    Target: https://app.ecomkassa.ru/fiscalorder/v5/report/{uuid}
     Response: eKomKassa status response
     '''
     start_time = time.time()
