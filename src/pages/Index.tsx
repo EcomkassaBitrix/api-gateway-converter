@@ -257,7 +257,12 @@ const Index = () => {
         })
       });
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        data = { error: 'Некорректный ответ от сервера' };
+      }
       
       if (response.ok && data.Status === 'Success' && data.Data?.AuthToken) {
         setAuthToken(data.Data.AuthToken);
@@ -266,8 +271,9 @@ const Index = () => {
         setCurrentToken(data.Data.AuthToken);
         toast.success('Токен успешно получен');
       } else {
-        const errorMsg = data.Error?.Message || data.error || 'Ошибка авторизации';
+        const errorMsg = data.Error?.Message || data.error || `Ошибка авторизации (HTTP ${response.status})`;
         toast.error(errorMsg);
+        setAuthResponse(data);
       }
     } catch (error) {
       toast.error('Ошибка связи с сервером');
