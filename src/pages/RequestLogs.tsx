@@ -1,123 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
-import AuthScreen from '@/components/request-logs/AuthScreen';
-import LogFilters from '@/components/request-logs/LogFilters';
-import LogsTable from '@/components/request-logs/LogsTable';
-import LogDetailModal from '@/components/request-logs/LogDetailModal';
 
-const API_BASE = window.location.hostname === 'localhost' 
-  ? 'http://localhost:5000'
-  : 'https://gw.ecomkassa.ru';
+const LOGS_API = 'https://functions.poehali.dev/ed40a7a0-1c4e-47c5-b69a-bbe27853e591';
 
 interface RequestLog {
   id: number;
   created_at: string;
-  method: string;
-  url: string;
-  path: string;
-  source_ip: string;
-  request_body: any;
-  target_url: string;
-  response_status?: number;
-  response_body: any;
-  client_response_status?: number;
-  duration_ms?: number;
-  error_message?: string;
+  function_name: string;
+  log_level: string;
+  message: string;
+  request_data: any;
+  response_data: any;
   request_id: string;
-}
-
-interface RequestLogDetail extends RequestLog {
-  user_agent: string;
-  request_headers: any;
-  target_method: string;
-  target_headers: any;
-  target_body: any;
-  response_headers: any;
-  client_response_body: any;
+  duration_ms?: number;
+  status_code?: number;
 }
 
 export default function RequestLogs() {
   const [logs, setLogs] = useState<RequestLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [methodFilter, setMethodFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [functionFilter, setFunctionFilter] = useState<string>('all');
+  const [levelFilter, setLevelFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
-  const [selectedLog, setSelectedLog] = useState<RequestLogDetail | null>(null);
+  const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [loginForm, setLoginForm] = useState({ login: '', password: '' });
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [replaying, setReplaying] = useState(false);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/check`, {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      setAuthenticated(data.authenticated);
-    } catch (error) {
-      console.error('Auth check failed:', error);
-      setAuthenticated(false);
-    } finally {
-      setCheckingAuth(false);
-    }
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoggingIn(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(loginForm)
-      });
-      const data = await response.json();
-      if (response.ok && data.success) {
-        setAuthenticated(true);
-        toast.success('Успешный вход');
-      } else {
-        toast.error(data.message || 'Неверные данные');
-      }
-    } catch (error) {
-      toast.error('Ошибка авторизации');
-      console.error(error);
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE}/api/admin/logout`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      setAuthenticated(false);
-      toast.success('Вы вышли');
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/request-logs?limit=100`, {
-        credentials: 'include'
-      });
-      if (response.status === 401) {
-        setAuthenticated(false);
-        return;
-      }
+      const params = new URLSearchParams({ limit: '100' });
+      if (functionFilter !== 'all') params.append('function_name', functionFilter);
+      if (levelFilter !== 'all') params.append('log_level', levelFilter);
+
+      const response = await fetch(`${LOGS_API}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch logs');
       const data = await response.json();
-      setLogs(data.logs || []);
+      setLogs(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.error('Ошибка загрузки логов');
       console.error(error);
@@ -126,153 +49,235 @@ export default function RequestLogs() {
     }
   };
 
-  const fetchLogDetail = async (logId: number) => {
-    try {
-      const response = await fetch(`${API_BASE}/api/request-logs/${logId}`, {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch log detail');
-      const data = await response.json();
-      setSelectedLog(data);
-    } catch (error) {
-      toast.error('Ошибка загрузки деталей лога');
-      console.error(error);
-    }
-  };
-
-  const handleReplay = async (logId: number) => {
-    setReplaying(true);
-    try {
-      const response = await fetch(`${API_BASE}/api/request-logs/${logId}/replay`, {
-        method: 'POST',
-        credentials: 'include'
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        toast.success(`Запрос повторён: ${data.status} (${data.duration_ms}ms)`);
-        await fetchLogs();
-      } else {
-        toast.error(`Ошибка: ${data.error}`);
-      }
-    } catch (error) {
-      toast.error('Ошибка повтора запроса');
-      console.error(error);
-    } finally {
-      setReplaying(false);
-    }
-  };
+  useEffect(() => {
+    fetchLogs();
+  }, [functionFilter, levelFilter]);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (authenticated) {
-      fetchLogs();
-      
-      if (autoRefresh) {
-        const interval = setInterval(fetchLogs, 3000);
-        return () => clearInterval(interval);
-      }
-    }
-  }, [authenticated, autoRefresh]);
+    if (!autoRefresh) return;
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, functionFilter, levelFilter]);
 
   const filteredLogs = logs.filter(log => {
-    const matchesMethod = methodFilter === 'all' || log.method === methodFilter;
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === '2xx' && log.response_status && log.response_status >= 200 && log.response_status < 300) ||
-      (statusFilter === '4xx' && log.response_status && log.response_status >= 400 && log.response_status < 500) ||
-      (statusFilter === '5xx' && log.response_status && log.response_status >= 500);
-    
-    const matchesDate = () => {
-      if (dateFilter === 'all') return true;
-      const logDate = new Date(log.created_at);
-      const now = new Date();
-      const diffMs = now.getTime() - logDate.getTime();
-      const diffHours = diffMs / (1000 * 60 * 60);
-      
-      if (dateFilter === '1h') return diffHours <= 1;
-      if (dateFilter === '6h') return diffHours <= 6;
-      if (dateFilter === '24h') return diffHours <= 24;
-      if (dateFilter === '7d') return diffHours <= 24 * 7;
-      return true;
-    };
-    
-    const matchesSearch = search === '' || 
-      log.path.toLowerCase().includes(search.toLowerCase()) ||
-      log.source_ip?.includes(search) ||
-      log.request_id?.toLowerCase().includes(search.toLowerCase());
-    return matchesMethod && matchesStatus && matchesDate() && matchesSearch;
+    if (search) {
+      const searchLower = search.toLowerCase();
+      return (
+        log.message.toLowerCase().includes(searchLower) ||
+        log.function_name.toLowerCase().includes(searchLower) ||
+        log.request_id?.toLowerCase().includes(searchLower) ||
+        JSON.stringify(log.request_data || {}).toLowerCase().includes(searchLower)
+      );
+    }
+    return true;
   });
 
-  if (checkingAuth || !authenticated) {
-    return (
-      <AuthScreen
-        checkingAuth={checkingAuth}
-        loginForm={loginForm}
-        setLoginForm={setLoginForm}
-        loggingIn={loggingIn}
-        onLogin={handleLogin}
-      />
-    );
-  }
+  const uniqueFunctions = Array.from(new Set(logs.map(log => log.function_name)));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">HTTP-запросы Gateway</h1>
-            <p className="text-gray-600">Полный журнал запросов через прокси</p>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Icon name="Activity" size={32} />
+              Логи запросов
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Детальная информация о всех запросах к API Gateway
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={autoRefresh ? 'default' : 'outline'}
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className="gap-2"
-            >
-              <Icon name={autoRefresh ? 'RefreshCw' : 'Pause'} className={autoRefresh ? 'animate-spin' : ''} size={16} />
-              {autoRefresh ? 'Авто' : 'Пауза'}
-            </Button>
-            <Button onClick={fetchLogs} variant="outline" className="gap-2">
-              <Icon name="RefreshCw" size={16} />
-              Обновить
-            </Button>
-            <Button onClick={handleLogout} variant="outline" className="gap-2">
-              <Icon name="LogOut" size={16} />
-              Выйти
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => window.location.href = '/'}>
+            <Icon name="ArrowLeft" size={16} className="mr-2" />
+            На главную
+          </Button>
         </div>
 
-        <LogFilters
-          search={search}
-          setSearch={setSearch}
-          methodFilter={methodFilter}
-          setMethodFilter={setMethodFilter}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          dateFilter={dateFilter}
-          setDateFilter={setDateFilter}
-          filteredCount={filteredLogs.length}
-          totalCount={logs.length}
-        />
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Icon name="Filter" size={20} />
+                  Фильтры
+                </CardTitle>
+                <CardDescription>Поиск и фильтрация логов</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setAutoRefresh(!autoRefresh)}
+                >
+                  <Icon name={autoRefresh ? "Pause" : "Play"} size={16} className="mr-2" />
+                  {autoRefresh ? 'Остановить' : 'Запустить'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={fetchLogs} disabled={loading}>
+                  <Icon name="RefreshCw" size={16} className={loading ? 'animate-spin' : ''} />
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Функция</label>
+                <Select value={functionFilter} onValueChange={setFunctionFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все функции</SelectItem>
+                    {uniqueFunctions.map(fn => (
+                      <SelectItem key={fn} value={fn}>{fn}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Уровень</label>
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Все уровни</SelectItem>
+                    <SelectItem value="INFO">INFO</SelectItem>
+                    <SelectItem value="ERROR">ERROR</SelectItem>
+                    <SelectItem value="WARNING">WARNING</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Поиск</label>
+                <Input 
+                  placeholder="ID, сообщение, данные..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        <LogsTable
-          logs={filteredLogs}
-          loading={loading}
-          onViewDetails={fetchLogDetail}
-          onReplay={handleReplay}
-          replaying={replaying}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="List" size={20} />
+              Логи ({filteredLogs.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-12">
+                <Icon name="Loader2" size={32} className="animate-spin mx-auto text-muted-foreground" />
+                <p className="text-muted-foreground mt-4">Загрузка логов...</p>
+              </div>
+            ) : filteredLogs.length === 0 ? (
+              <div className="text-center py-12">
+                <Icon name="FileX" size={48} className="mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">Логи не найдены</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredLogs.map(log => (
+                  <div
+                    key={log.id}
+                    className="p-4 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                    onClick={() => setSelectedLog(log)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant={log.log_level === 'ERROR' ? 'destructive' : 'default'}>
+                            {log.log_level}
+                          </Badge>
+                          <Badge variant="outline">{log.function_name}</Badge>
+                          {log.status_code && (
+                            <Badge variant={log.status_code >= 400 ? 'destructive' : 'secondary'}>
+                              {log.status_code}
+                            </Badge>
+                          )}
+                          {log.duration_ms && (
+                            <span className="text-xs text-muted-foreground">{log.duration_ms}ms</span>
+                          )}
+                        </div>
+                        <p className="text-sm mb-1">{log.message}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(log.created_at).toLocaleString('ru-RU')} • ID: {log.request_id || log.id}
+                        </p>
+                      </div>
+                      <Icon name="ChevronRight" size={20} className="text-muted-foreground" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-        <LogDetailModal
-          log={selectedLog}
-          onClose={() => setSelectedLog(null)}
-          onReplay={handleReplay}
-          replaying={replaying}
-        />
+        {selectedLog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedLog(null)}>
+            <Card className="max-w-4xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Icon name="FileText" size={20} />
+                    Детали лога #{selectedLog.id}
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedLog(null)}>
+                    <Icon name="X" size={20} />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Функция</h4>
+                    <Badge variant="outline">{selectedLog.function_name}</Badge>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Уровень</h4>
+                    <Badge variant={selectedLog.log_level === 'ERROR' ? 'destructive' : 'default'}>
+                      {selectedLog.log_level}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Время</h4>
+                    <p className="text-sm">{new Date(selectedLog.created_at).toLocaleString('ru-RU')}</p>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-1">Длительность</h4>
+                    <p className="text-sm">{selectedLog.duration_ms ? `${selectedLog.duration_ms}ms` : '—'}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Сообщение</h4>
+                  <p className="text-sm bg-muted p-3 rounded">{selectedLog.message}</p>
+                </div>
+
+                {selectedLog.request_data && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Данные запроса</h4>
+                    <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-64">
+                      {JSON.stringify(selectedLog.request_data, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {selectedLog.response_data && (
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2">Данные ответа</h4>
+                    <pre className="text-xs bg-muted p-3 rounded overflow-auto max-h-64">
+                      {JSON.stringify(selectedLog.response_data, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </div>
   );
