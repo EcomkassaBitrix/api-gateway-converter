@@ -77,7 +77,19 @@ export const apiCall = async (
 
   let response = await makeRequest(currentToken || undefined);
 
-  if (response.status === 401 && requiresAuth && authCredentials) {
+  const isTokenExpired = async (resp: Response): Promise<boolean> => {
+    if (resp.status === 401) return true;
+    
+    try {
+      const clone = resp.clone();
+      const data = await clone.json();
+      return data.error === 'ExpiredToken' || data.Error?.Code === 'ExpiredToken';
+    } catch {
+      return false;
+    }
+  };
+
+  if (requiresAuth && authCredentials && await isTokenExpired(response)) {
     const newToken = await refreshToken();
     
     if (newToken) {

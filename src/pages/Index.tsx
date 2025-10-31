@@ -252,7 +252,11 @@ const Index = () => {
       let response = await makeStatusRequest(authToken);
       let data = await response.json();
       
-      if (response.status === 401 && authForm.login && authForm.password) {
+      const isTokenExpired = response.status === 401 || 
+                             data.error === 'ExpiredToken' || 
+                             data.Error?.Code === 'ExpiredToken';
+      
+      if (isTokenExpired && authForm.login && authForm.password) {
         toast.info('Токен истёк, переавторизация...');
         await handleAuth();
         response = await makeStatusRequest(authToken);
