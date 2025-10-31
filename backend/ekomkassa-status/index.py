@@ -168,15 +168,64 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
-        combined_response = {
-            'ekomkassa_response': response_json
-        }
-        return {
-            'statusCode': response.status_code,
-            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': json.dumps(combined_response),
-            'isBase64Encoded': False
-        }
+        if response.status_code == 200 and isinstance(response_json, dict):
+            status_mapping = {
+                'wait': ('NEW', 'Запрос на чек получен'),
+                'done': ('DONE', 'Чек пробит успешно'),
+                'fail': ('ERROR', 'Ошибка создания чека')
+            }
+            
+            ekomkassa_status = response_json.get('status', 'wait')
+            status_name, status_message = status_mapping.get(ekomkassa_status, ('UNKNOWN', 'Неизвестный статус'))
+            
+            ferma_response = {
+                'Status': 'Success',
+                'Data': {
+                    'StatusCode': 0 if ekomkassa_status == 'wait' else (1 if ekomkassa_status == 'done' else 2),
+                    'StatusName': status_name,
+                    'StatusMessage': status_message,
+                    'ReceiptId': uuid
+                },
+                'ekomkassa_response': response_json
+            }
+            
+            return {
+                'statusCode': 200,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_response),
+                'isBase64Encoded': False
+            }
+        else:
+            error_code = response.status_code
+            error_message = 'Unknown error'
+            
+            if isinstance(response_json, dict):
+                if 'code' in response_json and 'text' in response_json:
+                    error_code = response_json['code']
+                    error_message = response_json['text']
+                elif response_json.get('error'):
+                    error_obj = response_json['error']
+                    if isinstance(error_obj, dict):
+                        error_code = error_obj.get('code', response.status_code)
+                        error_message = error_obj.get('text', str(error_obj))
+                    elif isinstance(error_obj, str):
+                        error_message = error_obj
+            
+            ferma_error = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code,
+                    'Message': error_message
+                },
+                'ekomkassa_response': response_json
+            }
+            
+            return {
+                'statusCode': response.status_code,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_error),
+                'isBase64Encoded': False
+            }
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[STATUS] eKomKassa API error: {str(e)}")
