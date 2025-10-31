@@ -178,30 +178,32 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ekomkassa_status = response_json.get('status', 'wait')
             status_code, status_name, status_message = status_mapping.get(ekomkassa_status, (0, 'UNKNOWN', 'Неизвестный статус'))
             
+            payload = response_json.get('payload')
+            receipt_datetime = payload.get('receipt_datetime') if payload else None
+            
             ferma_data = {
                 'StatusCode': status_code,
                 'StatusName': status_name,
                 'StatusMessage': status_message,
-                'ModifiedDateUtc': response_json.get('timestamp', ''),
-                'ReceiptDateUtc': response_json.get('timestamp', '') if ekomkassa_status == 'done' else None,
-                'ModifiedDateTimeIso': response_json.get('timestamp', ''),
-                'ReceiptDateTimeIso': response_json.get('timestamp', '') if ekomkassa_status == 'done' else None,
+                'ModifiedDateUtc': response_json.get('timestamp'),
+                'ReceiptDateUtc': receipt_datetime,
+                'ModifiedDateTimeIso': response_json.get('timestamp'),
+                'ReceiptDateTimeIso': receipt_datetime,
                 'ReceiptId': uuid
             }
             
-            if ekomkassa_status == 'done' and response_json.get('fiscal_data'):
-                fiscal = response_json['fiscal_data']
+            if ekomkassa_status == 'done' and payload:
                 ferma_data['Device'] = {
-                    'DeviceId': fiscal.get('device_id', ''),
-                    'RNM': fiscal.get('rnm', ''),
-                    'ZN': fiscal.get('zn', ''),
-                    'FN': fiscal.get('fn', ''),
-                    'FDN': fiscal.get('fdn', ''),
-                    'FPD': fiscal.get('fpd', ''),
-                    'ShiftNumber': fiscal.get('shift_number'),
-                    'ReceiptNumInShift': fiscal.get('receipt_num_in_shift', 1),
-                    'DeviceType': fiscal.get('device_type'),
-                    'OfdReceiptUrl': fiscal.get('ofd_receipt_url', '')
+                    'DeviceId': None,
+                    'RNM': payload.get('ecr_registration_number'),
+                    'ZN': None,
+                    'FN': payload.get('fn_number'),
+                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') else None,
+                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') else None,
+                    'ShiftNumber': payload.get('shift_number'),
+                    'ReceiptNumInShift': payload.get('fiscal_receipt_number'),
+                    'DeviceType': None,
+                    'OfdReceiptUrl': response_json.get('permalink')
                 }
             else:
                 ferma_data['Device'] = None
