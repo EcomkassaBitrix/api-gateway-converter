@@ -40,6 +40,29 @@ const Index = () => {
   });
   const [statusResult, setStatusResult] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+  const [stats, setStats] = useState({
+    total_requests: 0,
+    successful_requests: 0,
+    error_requests: 0,
+    avg_duration_ms: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(getApiUrl('STATS'));
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error);
+      }
+    };
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const exampleFermaRequest = {
     "Request": {
@@ -305,10 +328,10 @@ const Index = () => {
   };
 
   const statsData = [
-    { label: 'Всего запросов', value: '1,247', icon: 'Activity', trend: '+12%' },
-    { label: 'Успешных', value: '1,198', icon: 'CheckCircle2', trend: '+8%' },
-    { label: 'Ошибок', value: '49', icon: 'AlertCircle', trend: '-3%' },
-    { label: 'Средн. время', value: '124ms', icon: 'Clock', trend: '-15%' },
+    { label: 'Всего запросов', value: stats.total_requests.toLocaleString(), icon: 'Activity', trend: '' },
+    { label: 'Успешных', value: stats.successful_requests.toLocaleString(), icon: 'CheckCircle2', trend: '' },
+    { label: 'Ошибок', value: stats.error_requests.toLocaleString(), icon: 'AlertCircle', trend: '' },
+    { label: 'Средн. время', value: `${stats.avg_duration_ms}ms`, icon: 'Clock', trend: '' },
   ];
 
   const recentLogs = [
