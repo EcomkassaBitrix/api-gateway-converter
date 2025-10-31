@@ -1,19 +1,21 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import StatsCards from '@/components/gateway/StatsCards';
 import AuthTab from '@/components/gateway/AuthTab';
 import SandboxTab from '@/components/gateway/SandboxTab';
 import StatusTab from '@/components/gateway/StatusTab';
 import DocsTab from '@/components/gateway/DocsTab';
-import LogsTab from '@/components/gateway/LogsTab';
 import AnalyticsTab from '@/components/gateway/AnalyticsTab';
 import { useGatewayAuth } from '@/hooks/useGatewayAuth';
 import { useGatewaySandbox } from '@/hooks/useGatewaySandbox';
 import { useGatewayStatus } from '@/hooks/useGatewayStatus';
 import { useGatewayStats } from '@/hooks/useGatewayStats';
-import { useGatewayLogs } from '@/hooks/useGatewayLogs';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   const {
     authForm,
     setAuthForm,
@@ -44,7 +46,6 @@ const Index = () => {
   } = useGatewayStatus({ authToken, authForm, handleAuth });
 
   const stats = useGatewayStats();
-  const recentLogs = useGatewayLogs();
 
   const statsData = [
     {
@@ -96,7 +97,7 @@ const Index = () => {
         <StatsCards statsData={statsData} />
 
         <Tabs defaultValue="auth" className="space-y-6 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="auth" className="gap-2">
               <Icon name="KeyRound" size={16} />
               Авторизация
@@ -113,15 +114,22 @@ const Index = () => {
               <Icon name="BookOpen" size={16} />
               Документация
             </TabsTrigger>
-            <TabsTrigger value="logs" className="gap-2">
-              <Icon name="Terminal" size={16} />
-              Логи
-            </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2">
               <Icon name="BarChart3" size={16} />
               Аналитика
             </TabsTrigger>
           </TabsList>
+          
+          <div className="flex justify-end">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate('/request-logs')}
+              className="gap-2"
+            >
+              <Icon name="Terminal" size={16} />
+              Полные логи системы
+            </Button>
+          </div>
 
           <TabsContent value="auth" className="space-y-6">
             <AuthTab
@@ -162,10 +170,6 @@ const Index = () => {
 
           <TabsContent value="docs" className="space-y-6">
             <DocsTab />
-          </TabsContent>
-
-          <TabsContent value="logs" className="space-y-6">
-            <LogsTab recentLogs={recentLogs} />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
