@@ -38,6 +38,23 @@ async function logToDB(functionName, logLevel, message, requestData = null, resp
   }
 }
 
+function convertEkomkassaToFerma(ekomkassaResponse) {
+  const now = new Date();
+  const expirationDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  
+  const formatDate = (date) => {
+    return date.toISOString().split('.')[0];
+  };
+  
+  return {
+    Status: 'Success',
+    Data: {
+      AuthToken: ekomkassaResponse.token,
+      ExpirationDateUtc: formatDate(expirationDate)
+    }
+  };
+}
+
 app.post('/api/Authorization/CreateAuthToken', async (req, res) => {
   const startTime = Date.now();
   const requestId = req.headers['x-request-id'] || `req-${Date.now()}`;
@@ -75,7 +92,8 @@ app.post('/api/Authorization/CreateAuthToken', async (req, res) => {
       durationMs,
       response.status);
     
-    res.status(response.status).json(response.data);
+    const fermaResponse = convertEkomkassaToFerma(response.data);
+    res.status(200).json(fermaResponse);
   } catch (error) {
     const durationMs = Date.now() - startTime;
     console.error(`[AUTH] eKomKassa API error:`, error.message);
