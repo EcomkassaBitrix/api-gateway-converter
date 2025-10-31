@@ -15,6 +15,7 @@ import AnalyticsTab from '@/components/gateway/AnalyticsTab';
 const Index = () => {
   const [fermaInput, setFermaInput] = useState('');
   const [atolOutput, setAtolOutput] = useState('');
+  const [fermaOutput, setFermaOutput] = useState('');
   const [isConverting, setIsConverting] = useState(false);
   const [usedInvoiceIds, setUsedInvoiceIds] = useState<Record<string, Set<string>>>({});
   
@@ -91,17 +92,32 @@ const Index = () => {
         },
         body: JSON.stringify({
           ...fermaData,
-          token: authToken
+          token: authToken,
+          login: authForm.login,
+          password: authForm.password
         })
       });
       
       const data = await response.json();
       
+      setAtolOutput(JSON.stringify(data, null, 2));
+      
+      const fermaResponse = {
+        Status: response.ok ? 'Success' : 'Error',
+        Uuid: data.uuid || '',
+        Timestamp: data.timestamp || new Date().toISOString(),
+        Error: data.error ? {
+          Code: data.error.code || 0,
+          Message: data.error.text || data.error,
+          Type: data.error.type || 'system'
+        } : null
+      };
+      
+      setFermaOutput(JSON.stringify(fermaResponse, null, 2));
+      
       if (response.ok) {
-        setAtolOutput(JSON.stringify(data, null, 2));
         toast.success('Чек успешно создан');
       } else {
-        setAtolOutput(JSON.stringify(data, null, 2));
         const errorMsg = data.error?.text || data.error || 'Ошибка создания чека';
         toast.error(errorMsg);
       }
@@ -361,6 +377,7 @@ const Index = () => {
               fermaInput={fermaInput}
               setFermaInput={setFermaInput}
               atolOutput={atolOutput}
+              fermaOutput={fermaOutput}
               isConverting={isConverting}
               handleConvert={handleConvert}
               loadExample={loadExample}

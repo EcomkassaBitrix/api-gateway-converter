@@ -7,6 +7,7 @@ interface SandboxTabProps {
   fermaInput: string;
   setFermaInput: (value: string) => void;
   atolOutput: string;
+  fermaOutput: string;
   isConverting: boolean;
   handleConvert: () => void;
   loadExample: () => void;
@@ -16,14 +17,16 @@ interface SandboxTabProps {
 const SandboxTab = ({ 
   fermaInput, 
   setFermaInput, 
-  atolOutput, 
+  atolOutput,
+  fermaOutput, 
   isConverting, 
   handleConvert, 
   loadExample,
   loadCorrectionExample 
 }: SandboxTabProps) => {
   return (
-    <div className="grid lg:grid-cols-2 gap-6">
+    <div className="space-y-6">
+      <div className="grid lg:grid-cols-2 gap-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -76,26 +79,69 @@ const SandboxTab = ({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Icon name="Code2" size={20} />
-            eKomKassa Output
+            <Icon name="Zap" size={20} />
+            Результат
           </CardTitle>
-          <CardDescription>Результат конвертации в формат eKomKassa (Атол v5)</CardDescription>
+          <CardDescription>Ответ появится ниже после конвертации</CardDescription>
         </CardHeader>
         <CardContent>
-          <Textarea
-            value={atolOutput}
-            readOnly
-            placeholder="Результат появится здесь..."
-            className="font-mono text-sm min-h-[400px] bg-muted"
-          />
-          {atolOutput && (
-            <Button variant="outline" className="w-full mt-4">
-              <Icon name="Copy" size={16} className="mr-2" />
-              Копировать
-            </Button>
+          {!atolOutput ? (
+            <div className="flex flex-col items-center justify-center min-h-[400px] text-muted-foreground">
+              <Icon name="ArrowDown" size={48} className="mb-4 opacity-20" />
+              <p>Нажмите "Конвертировать" для получения результата</p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center">
+                <Icon name="CheckCircle2" size={64} className="text-green-500 mx-auto mb-4" />
+                <p className="text-lg font-semibold">Результаты готовы</p>
+                <p className="text-sm text-muted-foreground">Смотрите ответы ниже</p>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
+      </div>
+
+      {fermaOutput && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="Code2" size={20} />
+                eKomKassa Response
+              </CardTitle>
+              <CardDescription>Сырой ответ от API eKomKassa</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={atolOutput}
+                readOnly
+                placeholder="Ответ от eKomKassa..."
+                className="font-mono text-sm min-h-[300px] bg-muted"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="FileJson" size={20} />
+                Ferma Response
+              </CardTitle>
+              <CardDescription>Сконвертированный ответ в формате Ferma</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                value={fermaOutput}
+                readOnly
+                placeholder="Ответ в формате Ferma..."
+                className="font-mono text-sm min-h-[300px] bg-muted"
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
