@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
-
-const LOGS_API = 'https://functions.poehali.dev/ed40a7a0-1c4e-47c5-b69a-bbe27853e591';
+import { getApiUrl } from '@/lib/api';
 const ADMIN_LOGIN = 'admin';
 const ADMIN_PASSWORD = 'GatewayEcomkassa';
 
@@ -69,7 +68,7 @@ export default function RequestLogs() {
       if (functionFilter !== 'all') params.append('function_name', functionFilter);
       if (levelFilter !== 'all') params.append('log_level', levelFilter);
 
-      const response = await fetch(`${LOGS_API}?${params}`);
+      const response = await fetch(`${getApiUrl('LOGS')}?${params}`);
       if (!response.ok) throw new Error('Failed to fetch logs');
       const data = await response.json();
       setLogs(Array.isArray(data) ? data : []);

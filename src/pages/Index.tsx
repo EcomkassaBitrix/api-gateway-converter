@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
+import { getApiUrl } from '@/lib/api';
 import StatsCards from '@/components/gateway/StatsCards';
 import AuthTab from '@/components/gateway/AuthTab';
 import SandboxTab from '@/components/gateway/SandboxTab';
@@ -74,7 +75,7 @@ const Index = () => {
     try {
       const fermaData = JSON.parse(fermaInput);
       
-      const response = await fetch('/api/kkt/cloud/receipt', {
+      const response = await fetch(getApiUrl('RECEIPT'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +193,7 @@ const Index = () => {
     setIsAuthenticating(true);
     
     try {
-      const response = await fetch('/api/Authorization/CreateAuthToken', {
+      const response = await fetch(getApiUrl('AUTH'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ const Index = () => {
         group_code: statusForm.group_code
       });
 
-      const response = await fetch(`/api/kkt/cloud/status?${params}`, {
+      const response = await fetch(`${getApiUrl('STATUS')}?${params}`, {
         method: 'GET'
       });
       
