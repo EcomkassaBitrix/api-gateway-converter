@@ -161,7 +161,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         except:
             response_json = {'raw': response.text}
         
-        log_to_db('ekomkassa-status', 'INFO', 'eKomKassa status response received',
+        log_level = 'ERROR' if response.status_code >= 400 else 'INFO'
+        log_to_db('ekomkassa-status', log_level, 'eKomKassa status response received',
                   request_data={'uuid': uuid, 'group_code': group_code},
                   response_data=response_json,
                   request_id=request_id,

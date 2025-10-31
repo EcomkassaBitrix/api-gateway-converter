@@ -352,7 +352,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         except:
             response_json = {'raw': response.text}
         
-        log_to_db('ekomkassa-receipt', 'INFO', 'eKomKassa Ferma receipt response received',
+        log_level = 'ERROR' if response.status_code >= 400 else 'INFO'
+        log_to_db('ekomkassa-receipt', log_level, 'eKomKassa Ferma receipt response received',
                   request_data={'endpoint': endpoint},
                   response_data=response_json,
                   request_id=request_id,
