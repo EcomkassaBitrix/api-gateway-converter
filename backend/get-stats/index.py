@@ -45,13 +45,23 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     cur = conn.cursor()
     
     cur.execute("""
+        WITH final_logs AS (
+          SELECT DISTINCT ON (request_id)
+            request_id,
+            status_code,
+            duration_ms
+          FROM t_p83865419_api_gateway_converte.logs
+          WHERE function_name IN ('ekomkassa-receipt', 'ekomkassa-status', 'ekomkassa-auth')
+            AND request_id IS NOT NULL
+            AND status_code IS NOT NULL
+          ORDER BY request_id, created_at DESC
+        )
         SELECT 
           COUNT(*) as total_requests,
           COUNT(*) FILTER (WHERE status_code >= 200 AND status_code < 300) as successful_requests,
           COUNT(*) FILTER (WHERE status_code >= 400) as error_requests,
           ROUND(AVG(duration_ms)) as avg_duration_ms
-        FROM t_p83865419_api_gateway_converte.logs
-        WHERE function_name IN ('ekomkassa-receipt', 'ekomkassa-status', 'ekomkassa-auth')
+        FROM final_logs
     """)
     
     row = cur.fetchone()
