@@ -9,7 +9,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
           context - object с request_id
     Returns: HTTP response с токеном или ошибкой
     '''
-    method: str = event.get('httpMethod', 'GET')
+    method: str = event.get('httpMethod', 'POST')
     
     if method == 'OPTIONS':
         return {
