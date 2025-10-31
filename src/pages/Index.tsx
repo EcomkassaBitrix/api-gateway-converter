@@ -39,6 +39,7 @@ const Index = () => {
     group_code: '700'
   });
   const [statusResult, setStatusResult] = useState('');
+  const [statusConverterResult, setStatusConverterResult] = useState('');
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
   const [stats, setStats] = useState({
     total_requests: 0,
@@ -318,6 +319,24 @@ const Index = () => {
       const ekomkassaResponse = data.ekomkassa_response || data;
       setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
       
+      const converterResponse: any = {
+        Status: response.ok && ekomkassaResponse.status !== 'fail' ? 'Success' : 'Failed',
+        Data: {
+          ReceiptId: ekomkassaResponse.uuid || '',
+          Status: ekomkassaResponse.status || 'unknown',
+          Timestamp: ekomkassaResponse.timestamp || ''
+        }
+      };
+      
+      if (!response.ok || ekomkassaResponse.status === 'fail') {
+        converterResponse.Error = {
+          Code: ekomkassaResponse.error?.code || 'UNKNOWN_ERROR',
+          Message: ekomkassaResponse.error?.text || 'Ошибка проверки статуса'
+        };
+      }
+      
+      setStatusConverterResult(JSON.stringify(converterResponse, null, 2));
+      
       if (response.ok) {
         if (ekomkassaResponse.status === 'done') {
           toast.success('Чек успешно пробит');
@@ -425,6 +444,7 @@ const Index = () => {
               setStatusForm={setStatusForm}
               authToken={authToken}
               statusResult={statusResult}
+              statusConverterResult={statusConverterResult}
               isCheckingStatus={isCheckingStatus}
               handleCheckStatus={handleCheckStatus}
             />

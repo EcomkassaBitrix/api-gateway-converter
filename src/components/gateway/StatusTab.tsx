@@ -13,6 +13,7 @@ interface StatusTabProps {
   setStatusForm: (form: { uuid: string; group_code: string }) => void;
   authToken: string;
   statusResult: string;
+  statusConverterResult: string;
   isCheckingStatus: boolean;
   handleCheckStatus: () => void;
 }
@@ -22,6 +23,7 @@ const StatusTab = ({
   setStatusForm,
   authToken,
   statusResult,
+  statusConverterResult,
   isCheckingStatus,
   handleCheckStatus
 }: StatusTabProps) => {
@@ -102,23 +104,43 @@ const StatusTab = ({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Icon name="FileText" size={20} />
-            Результат проверки
-          </CardTitle>
-          <CardDescription>Информация о статусе чека</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={statusResult}
-            readOnly
-            placeholder="Результат появится здесь..."
-            className="font-mono text-sm min-h-[400px]"
-          />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="Server" size={20} />
+              Ответ от eKomKassa
+            </CardTitle>
+            <CardDescription>Исходный ответ от сервиса eKomKassa</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={statusResult}
+              readOnly
+              placeholder="Ответ от eKomKassa появится здесь..."
+              className="font-mono text-sm min-h-[300px]"
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="FileText" size={20} />
+              Ответ API-конвертера
+            </CardTitle>
+            <CardDescription>Преобразованный ответ в формате Ferma</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={statusConverterResult}
+              readOnly
+              placeholder="Ответ API-конвертера появится здесь..."
+              className="font-mono text-sm min-h-[300px]"
+            />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };
