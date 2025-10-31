@@ -142,14 +142,21 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'isBase64Encoded': False
             }
         else:
+            error_code = response.status_code
             error_message = 'Authentication failed'
-            if isinstance(response_json, dict):
-                error_message = response_json.get('error', {}).get('text', str(response_json.get('error', 'Authentication failed')))
+            
+            if isinstance(response_json, dict) and response_json.get('error'):
+                error_obj = response_json['error']
+                if isinstance(error_obj, dict):
+                    error_code = error_obj.get('code', response.status_code)
+                    error_message = error_obj.get('text', error_message)
+                elif isinstance(error_obj, str):
+                    error_message = error_obj
             
             ferma_error = {
                 'Status': 'Failed',
                 'Error': {
-                    'Code': response.status_code,
+                    'Code': error_code,
                     'Message': error_message
                 },
                 'ekomkassa_response': response_json
