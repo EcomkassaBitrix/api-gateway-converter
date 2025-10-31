@@ -123,17 +123,13 @@ const Index = () => {
       
       const data = await response.json();
       
-      setAtolOutput(JSON.stringify(data, null, 2));
+      const ekomkassaResponse = data.ekomkassa_response || data;
+      setAtolOutput(JSON.stringify(ekomkassaResponse, null, 2));
       
       const fermaResponse = {
-        Status: response.ok ? 'Success' : 'Error',
-        Uuid: data.uuid || '',
-        Timestamp: data.timestamp || new Date().toISOString(),
-        Error: data.error ? {
-          Code: data.error.code || 0,
-          Message: data.error.text || data.error,
-          Type: data.error.type || 'system'
-        } : null
+        Status: data.Status || (response.ok ? 'Success' : 'Failed'),
+        Data: data.Data || {},
+        Error: data.Error || null
       };
       
       setFermaOutput(JSON.stringify(fermaResponse, null, 2));
@@ -304,19 +300,19 @@ const Index = () => {
         data = await response.json();
       }
       
+      const ekomkassaResponse = data.ekomkassa_response || data;
+      setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
+      
       if (response.ok) {
-        setStatusResult(JSON.stringify(data, null, 2));
-        
-        if (data.status === 'done') {
+        if (ekomkassaResponse.status === 'done') {
           toast.success('Чек успешно пробит');
-        } else if (data.status === 'wait') {
+        } else if (ekomkassaResponse.status === 'wait') {
           toast.info('Чек в очереди на обработку');
-        } else if (data.status === 'fail') {
+        } else if (ekomkassaResponse.status === 'fail') {
           toast.error('Ошибка при создании чека');
         }
       } else {
-        setStatusResult(JSON.stringify(data, null, 2));
-        const errorMsg = data.error?.text || data.error || 'Ошибка проверки статуса';
+        const errorMsg = ekomkassaResponse.error?.text || ekomkassaResponse.error || 'Ошибка проверки статуса';
         toast.error(errorMsg);
       }
     } catch (error) {

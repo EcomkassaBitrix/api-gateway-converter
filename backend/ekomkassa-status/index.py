@@ -168,10 +168,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
+        combined_response = {
+            'ekomkassa_response': response_json
+        }
         return {
             'statusCode': response.status_code,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': response.text,
+            'body': json.dumps(combined_response),
             'isBase64Encoded': False
         }
     except requests.RequestException as e:

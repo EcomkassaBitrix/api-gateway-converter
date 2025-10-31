@@ -362,7 +362,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         if response.status_code == 200:
             ferma_response = {
                 'Status': 'Success',
-                'Data': {}
+                'Data': {},
+                'ekomkassa_response': response_json
             }
             return {
                 'statusCode': 200,
@@ -383,7 +384,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                 'Error': {
                     'Code': error_code if error_code != 0 else response.status_code,
                     'Message': str(error_message)
-                }
+                },
+                'ekomkassa_response': response_json
             }
             return {
                 'statusCode': response.status_code,
@@ -404,7 +406,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'Error': {
                 'Code': 500,
                 'Message': f'eKomKassa API error: {str(e)}'
-            }
+            },
+            'ekomkassa_response': {}
         }
         return {
             'statusCode': 500,
@@ -540,10 +543,13 @@ def convert_simple_format(body_data: Dict[str, Any], login: Optional[str], passw
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
+        combined_response = {
+            'ekomkassa_response': response_json
+        }
         return {
             'statusCode': response.status_code,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': response.text,
+            'body': json.dumps(combined_response),
             'isBase64Encoded': False
         }
     except requests.RequestException as e:
