@@ -121,30 +121,68 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         except:
             response_json = {'raw': response.text}
         
-        log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa response received',
-                  request_data={'login': login},
-                  response_data=response_json,
-                  request_id=request_id,
-                  duration_ms=duration_ms,
-                  status_code=response.status_code)
-        
-        return {
-            'statusCode': response.status_code,
-            'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': response.text,
-            'isBase64Encoded': False
-        }
+        if response.status_code == 200 and isinstance(response_json, dict) and response_json.get('token'):
+            ferma_response = {
+                'Status': 'Success',
+                'Data': {
+                    'AuthToken': response_json['token']
+                }
+            }
+            log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa response received',
+                      request_data={'login': login},
+                      response_data=ferma_response,
+                      request_id=request_id,
+                      duration_ms=duration_ms,
+                      status_code=200)
+            return {
+                'statusCode': 200,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_response),
+                'isBase64Encoded': False
+            }
+        else:
+            error_message = 'Authentication failed'
+            if isinstance(response_json, dict):
+                error_message = response_json.get('error', {}).get('text', str(response_json.get('error', 'Authentication failed')))
+            
+            ferma_error = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': response.status_code,
+                    'Message': error_message
+                }
+            }
+            log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa error response received',
+                      request_data={'login': login},
+                      response_data=ferma_error,
+                      request_id=request_id,
+                      duration_ms=duration_ms,
+                      status_code=response.status_code)
+            return {
+                'statusCode': response.status_code,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps(ferma_error),
+                'isBase64Encoded': False
+            }
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
         logger.error(f"[AUTH] eKomKassa API error: {str(e)}")
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 500,
+                'Message': f'eKomKassa API error: {str(e)}'
+            }
+        }
         log_to_db('ekomkassa-auth', 'ERROR', f'eKomKassa API error: {str(e)}',
                   request_data={'login': login},
+                  response_data=ferma_error,
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
         return {
             'statusCode': 500,
             'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
-            'body': json.dumps({'error': f'eKomKassa API error: {str(e)}'}),
+            'body': json.dumps(ferma_error),
             'isBase64Encoded': False
         }
