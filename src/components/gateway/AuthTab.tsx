@@ -13,11 +13,12 @@ interface AuthTabProps {
   };
   setAuthForm: (form: any) => void;
   authToken: string;
+  authResponse: any;
   isAuthenticating: boolean;
   handleAuth: () => void;
 }
 
-const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAuth }: AuthTabProps) => {
+const AuthTab = ({ authForm, setAuthForm, authToken, authResponse, isAuthenticating, handleAuth }: AuthTabProps) => {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       <Card>
@@ -75,12 +76,12 @@ const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAut
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Icon name="Shield" size={20} />
-            eKomKassa Token
+            Ferma Response
           </CardTitle>
-          <CardDescription>Результат конвертации в формат eKomKassa (Атол v5)</CardDescription>
+          <CardDescription>Ответ в формате Ferma API</CardDescription>
         </CardHeader>
         <CardContent>
-          {authToken ? (
+          {authResponse ? (
             <div className="space-y-4">
               <div className="p-4 bg-muted rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
@@ -88,11 +89,7 @@ const AuthTab = ({ authForm, setAuthForm, authToken, isAuthenticating, handleAut
                   <span className="text-sm font-medium">Токен получен</span>
                 </div>
                 <Textarea
-                  value={JSON.stringify({
-                    code: 0,
-                    text: "",
-                    token: authToken
-                  }, null, 2)}
+                  value={JSON.stringify(authResponse, null, 2)}
                   readOnly
                   className="font-mono text-xs min-h-[200px] bg-background"
                 />

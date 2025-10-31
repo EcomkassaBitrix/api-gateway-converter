@@ -22,6 +22,7 @@ const Index = () => {
     password: ''
   });
   const [authToken, setAuthToken] = useState('');
+  const [authResponse, setAuthResponse] = useState<any>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const [statusForm, setStatusForm] = useState({
@@ -206,8 +207,9 @@ const Index = () => {
       
       const data = await response.json();
       
-      if (response.ok && data.token) {
-        setAuthToken(data.token);
+      if (response.ok && data.Status === 'Success' && data.Data?.AuthToken) {
+        setAuthToken(data.Data.AuthToken);
+        setAuthResponse(data);
         toast.success('Токен успешно получен');
       } else {
         const errorMsg = data.error?.text || data.error || 'Ошибка авторизации';
@@ -322,6 +324,7 @@ const Index = () => {
               authForm={authForm}
               setAuthForm={setAuthForm}
               authToken={authToken}
+              authResponse={authResponse}
               isAuthenticating={isAuthenticating}
               handleAuth={handleAuth}
             />
