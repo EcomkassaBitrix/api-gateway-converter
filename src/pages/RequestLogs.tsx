@@ -93,17 +93,27 @@ export default function RequestLogs() {
     return () => clearInterval(interval);
   }, [authenticated, autoRefresh, functionFilter, levelFilter, sourceFilter]);
 
-  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Unknown' => {
+  const getLogSource = (log: RequestLog): 'API' | 'Gateway' | 'Ecomkassa' | 'Unknown' => {
     const msg = log.message.toLowerCase();
     
-    if (msg.includes('incoming') || msg.includes('входящий')) {
+    // API - входящие запросы от клиента и исходящие ответы клиенту
+    if (msg.includes('incoming') || msg.includes('входящий') || 
+        msg.includes('responding to client') || msg.includes('ответ клиенту')) {
       return 'API';
     }
-    if (msg.includes('request to') || msg.includes('response received') || 
-        msg.includes('response from') || msg.includes('converting') || 
-        msg.includes('конвертация')) {
+    
+    // Ecomkassa - ответы от Ecomkassa
+    if (msg.includes('ekomkassa response') || msg.includes('ответ от ekomkassa')) {
+      return 'Ecomkassa';
+    }
+    
+    // Gateway - внутренняя обработка и запросы в Ecomkassa
+    if (msg.includes('request to') || msg.includes('запрос в') ||
+        msg.includes('converting') || msg.includes('конвертация') ||
+        msg.includes('processing') || msg.includes('обработка')) {
       return 'Gateway';
     }
+    
     return 'Unknown';
   };
 
@@ -235,6 +245,7 @@ export default function RequestLogs() {
                     <SelectItem value="all">Все источники</SelectItem>
                     <SelectItem value="API">API</SelectItem>
                     <SelectItem value="Gateway">Gateway</SelectItem>
+                    <SelectItem value="Ecomkassa">Ecomkassa</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -315,6 +326,7 @@ export default function RequestLogs() {
                             className={
                               getLogSource(log) === 'API' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
                               getLogSource(log) === 'Gateway' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' :
+                              getLogSource(log) === 'Ecomkassa' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
                               ''
                             }
                           >
