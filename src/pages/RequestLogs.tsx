@@ -8,6 +8,8 @@ import Icon from '@/components/ui/icon';
 import { toast } from 'sonner';
 
 const LOGS_API = 'https://functions.poehali.dev/ed40a7a0-1c4e-47c5-b69a-bbe27853e591';
+const ADMIN_LOGIN = 'admin';
+const ADMIN_PASSWORD = 'GatewayEcomkassa';
 
 interface RequestLog {
   id: number;
@@ -23,6 +25,9 @@ interface RequestLog {
 }
 
 export default function RequestLogs() {
+  const [authenticated, setAuthenticated] = useState(false);
+  const [loginForm, setLoginForm] = useState({ login: '', password: '' });
+  const [loggingIn, setLoggingIn] = useState(false);
   const [logs, setLogs] = useState<RequestLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [functionFilter, setFunctionFilter] = useState<string>('all');
@@ -30,6 +35,33 @@ export default function RequestLogs() {
   const [search, setSearch] = useState('');
   const [selectedLog, setSelectedLog] = useState<RequestLog | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+
+  useEffect(() => {
+    const savedAuth = sessionStorage.getItem('logs_auth');
+    if (savedAuth === 'true') {
+      setAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoggingIn(true);
+    
+    if (loginForm.login === ADMIN_LOGIN && loginForm.password === ADMIN_PASSWORD) {
+      setAuthenticated(true);
+      sessionStorage.setItem('logs_auth', 'true');
+      toast.success('Успешный вход');
+    } else {
+      toast.error('Неверный логин или пароль');
+    }
+    setLoggingIn(false);
+  };
+
+  const handleLogout = () => {
+    setAuthenticated(false);
+    sessionStorage.removeItem('logs_auth');
+    toast.success('Вы вышли');
+  };
 
   const fetchLogs = async () => {
     try {
@@ -50,14 +82,16 @@ export default function RequestLogs() {
   };
 
   useEffect(() => {
-    fetchLogs();
-  }, [functionFilter, levelFilter]);
+    if (authenticated) {
+      fetchLogs();
+    }
+  }, [authenticated, functionFilter, levelFilter]);
 
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!authenticated || !autoRefresh) return;
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
-  }, [autoRefresh, functionFilter, levelFilter]);
+  }, [authenticated, autoRefresh, functionFilter, levelFilter]);
 
   const filteredLogs = logs.filter(log => {
     if (search) {
@@ -74,6 +108,54 @@ export default function RequestLogs() {
 
   const uniqueFunctions = Array.from(new Set(logs.map(log => log.function_name)));
 
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Icon name="Lock" size={24} />
+              Вход в систему логов
+            </CardTitle>
+            <CardDescription>Введите учетные данные для доступа</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Логин</label>
+                <Input
+                  type="text"
+                  value={loginForm.login}
+                  onChange={(e) => setLoginForm({ ...loginForm, login: e.target.value })}
+                  placeholder="admin"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Пароль</label>
+                <Input
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loggingIn}>
+                {loggingIn ? (
+                  <Icon name="Loader2" size={16} className="animate-spin mr-2" />
+                ) : (
+                  <Icon name="LogIn" size={16} className="mr-2" />
+                )}
+                Войти
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -87,10 +169,16 @@ export default function RequestLogs() {
               Детальная информация о всех запросах к API Gateway
             </p>
           </div>
-          <Button variant="outline" onClick={() => window.location.href = '/'}>
-            <Icon name="ArrowLeft" size={16} className="mr-2" />
-            На главную
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleLogout}>
+              <Icon name="LogOut" size={16} className="mr-2" />
+              Выйти
+            </Button>
+            <Button variant="outline" onClick={() => window.location.href = '/'}>
+              <Icon name="ArrowLeft" size={16} className="mr-2" />
+              На главную
+            </Button>
+          </div>
         </div>
 
         <Card>
