@@ -64,7 +64,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         request_payload = json.dumps({'login': login, 'pass': password}).encode('utf-8')
         
         req = urllib.request.Request(
-            'https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            'https://gw.ecomkassa.ru/fiscalorder/v5/getToken',
             data=request_payload,
             headers={'Content-Type': 'application/json'}
         )

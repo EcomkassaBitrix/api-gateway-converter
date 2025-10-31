@@ -315,7 +315,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'callback_url': ferma_request['CallbackUrl']
         }
     
-    endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
+    endpoint = f'https://gw.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
     def make_receipt_request(current_token: str) -> requests.Response:
         '''Make receipt request to eKomKassa'''
@@ -511,7 +511,7 @@ def convert_simple_format(body_data: Dict[str, Any], login: Optional[str], passw
         }
     }
     
-    endpoint = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
+    endpoint = f'https://gw.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
     def make_simple_receipt_request(current_token: str) -> requests.Response:
         '''Make simple receipt request to eKomKassa'''
