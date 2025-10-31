@@ -99,7 +99,7 @@ app.post('/api/Authorization/CreateAuthToken', async (req, res) => {
   
   const { login, password } = req.body;
   
-  console.log(`[AUTH] Incoming request: login=${login}, password=${'***' if password else None}`);
+  console.log(`[AUTH] Incoming request: login=${login}, password=${password ? '***' : 'None'}`);
   await logToDB('auth', 'INFO', 'Incoming auth request', 
     { login, has_password: !!password }, null, requestId);
   
