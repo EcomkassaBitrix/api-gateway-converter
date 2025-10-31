@@ -145,13 +145,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             error_code = response.status_code
             error_message = 'Authentication failed'
             
-            if isinstance(response_json, dict) and response_json.get('error'):
-                error_obj = response_json['error']
-                if isinstance(error_obj, dict):
-                    error_code = error_obj.get('code', response.status_code)
-                    error_message = error_obj.get('text', error_message)
-                elif isinstance(error_obj, str):
-                    error_message = error_obj
+            if isinstance(response_json, dict):
+                if 'code' in response_json and 'text' in response_json:
+                    error_code = response_json['code']
+                    error_message = response_json['text']
+                elif response_json.get('error'):
+                    error_obj = response_json['error']
+                    if isinstance(error_obj, dict):
+                        error_code = error_obj.get('code', response.status_code)
+                        error_message = error_obj.get('text', error_message)
+                    elif isinstance(error_obj, str):
+                        error_message = error_obj
             
             ferma_error = {
                 'Status': 'Failed',
