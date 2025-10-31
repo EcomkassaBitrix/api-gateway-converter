@@ -72,16 +72,31 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         with urllib.request.urlopen(req, timeout=10) as response:
             ekomkassa_data = json.loads(response.read().decode('utf-8'))
         
-        ferma_response = {
-            'Token': ekomkassa_data.get('token'),
-            'Status': {
-                'StatusCode': ekomkassa_data.get('code', 0),
-                'StatusMessage': ekomkassa_data.get('text', '')
+        token = ekomkassa_data.get('token')
+        
+        if token:
+            ferma_response = {
+                'Status': 'Success',
+                'Data': {
+                    'AuthToken': token,
+                    'ExpirationDateUtc': '2099-12-31T23:59:59'
+                }
             }
-        }
+            status_code = 200
+        else:
+            error_code = ekomkassa_data.get('code', 1)
+            error_text = ekomkassa_data.get('text', 'Неизвестная ошибка')
+            ferma_response = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code,
+                    'Message': error_text
+                }
+            }
+            status_code = 500
         
         return {
-            'statusCode': 200,
+            'statusCode': status_code,
             'headers': {
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'

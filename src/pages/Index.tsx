@@ -207,12 +207,12 @@ const Index = () => {
       
       const data = await response.json();
       
-      if (response.ok && data.Token) {
-        setAuthToken(data.Token);
+      if (response.ok && data.Status === 'Success' && data.Data?.AuthToken) {
+        setAuthToken(data.Data.AuthToken);
         setAuthResponse(data);
         toast.success('Токен успешно получен');
       } else {
-        const errorMsg = data.Status?.StatusMessage || data.error || 'Ошибка авторизации';
+        const errorMsg = data.Error?.Message || data.error || 'Ошибка авторизации';
         toast.error(errorMsg);
       }
     } catch (error) {
