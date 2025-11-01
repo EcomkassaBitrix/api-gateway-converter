@@ -260,16 +260,26 @@ def auth_handler():
         return response, 200
     
     body_data = request.get_json(silent=True) or {}
-    login = body_data.get('login')
-    password = body_data.get('password')
+    # Ferma формат использует Login и Password с заглавной буквы
+    login = body_data.get('Login') or body_data.get('login')
+    password = body_data.get('Password') or body_data.get('password')
     
-    logger.info(f"[AUTH] Incoming request: login={login}, password={'***' if password else None}")
+    logger.info(f"[AUTH] Incoming request: Login={login}, Password={'***' if password else None}")
     log_to_db('auth', 'INFO', 'Incoming auth request', 
-              request_data={'login': login, 'has_password': bool(password)}, 
+              request_data={'Login': login, 'has_password': bool(password)}, 
               request_id=request_id)
     
     if not login or not password:
-        return jsonify({'error': 'login and password required'}), 400
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 400,
+                'Message': 'Login и Password обязательны'
+            }
+        }
+        flask_response = jsonify(ferma_error)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 400
     
     try:
         request_payload = {'login': login, 'pass': password}
@@ -423,20 +433,39 @@ def status_handler():
         response.headers['Access-Control-Max-Age'] = '86400'
         return response, 200
     
-    auth_token = request.args.get('AuthToken')
-    group_code = request.args.get('group_code', '700')
-    uuid = request.args.get('uuid')
+    # Ferma использует AuthToken, GroupCode, uuid
+    auth_token = request.args.get('AuthToken') or request.args.get('token')
+    group_code = request.args.get('GroupCode') or request.args.get('group_code', '700')
+    uuid = request.args.get('uuid') or request.args.get('Uuid')
     
-    logger.info(f"[STATUS] Incoming request: uuid={uuid}, group_code={group_code}, token={'***' if auth_token else None}")
+    logger.info(f"[STATUS] Incoming request: uuid={uuid}, GroupCode={group_code}, AuthToken={'***' if auth_token else None}")
     log_to_db('status', 'INFO', 'Incoming status check request',
-              request_data={'uuid': uuid, 'group_code': group_code, 'has_token': bool(auth_token)},
+              request_data={'uuid': uuid, 'GroupCode': group_code, 'has_token': bool(auth_token)},
               request_id=request_id)
     
     if not auth_token:
-        return jsonify({'error': 'AuthToken required'}), 400
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 401,
+                'Message': 'AuthToken обязателен'
+            }
+        }
+        flask_response = jsonify(ferma_error)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 401
     
     if not uuid:
-        return jsonify({'error': 'uuid required'}), 400
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 400,
+                'Message': 'uuid обязателен'
+            }
+        }
+        flask_response = jsonify(ferma_error)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 400
     
     ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/report/{uuid}'
     logger.info(f"[STATUS] Request to eKomKassa: {ekomkassa_url}")
@@ -611,11 +640,16 @@ def receipt_handler():
               request_data=body_data,
               request_id=request_id)
     
+    # Ferma формат использует Request с заглавной буквы
     ferma_request = body_data.get('Request')
+    # AuthToken или token (совместимость)
+    auth_token = body_data.get('AuthToken') or body_data.get('token')
+    # GroupCode или group_code (совместимость)
+    group_code = body_data.get('GroupCode') or body_data.get('group_code', '700')
     
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), 
-                                           body_data.get('group_code', '700'), 
+        result = convert_ferma_to_ekomkassa(ferma_request, auth_token, 
+                                           group_code, 
                                            start_time, request_id)
     else:
         result = convert_simple_format(body_data, start_time, request_id)
@@ -628,13 +662,31 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
     if not token:
-        return jsonify({'error': 'Token required'}), 401
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 401,
+                'Message': 'AuthToken обязателен'
+            }
+        }
+        flask_response = jsonify(ferma_error)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 401
     
     receipt = ferma_request.get('CustomerReceipt', {})
     items = receipt.get('Items', [])
     
     if not items:
-        return jsonify({'error': 'Items required'}), 400
+        ferma_error = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 400,
+                'Message': 'Items обязательны в чеке'
+            }
+        }
+        flask_response = jsonify(ferma_error)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 400
     
     # VAT mapping
     ferma_vat_mapping = {
