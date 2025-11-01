@@ -568,12 +568,11 @@ def status_handler():
             # Получаем payload для извлечения данных
             payload = response_json.get('payload', {})
             
-            # ReceiptDateUtc берём из receipt_datetime (если done) или timestamp
+            # ReceiptDateUtc заполняем ТОЛЬКО для статуса done (PROCEED)
+            # Берём из payload.receipt_datetime
             receipt_datetime_str = None
             if ekomkassa_status == 'done' and payload.get('receipt_datetime'):
                 receipt_datetime_str = payload['receipt_datetime']
-            elif timestamp:
-                receipt_datetime_str = timestamp
             
             receipt_date_iso = convert_date_to_iso(receipt_datetime_str) if receipt_datetime_str else None
             
