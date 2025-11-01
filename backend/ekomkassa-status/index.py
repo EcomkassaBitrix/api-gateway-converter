@@ -5,9 +5,29 @@ import os
 import time
 import psycopg2
 from typing import Dict, Any, Optional, Tuple
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def convert_ekomkassa_datetime(dt_str: Optional[str]) -> Optional[str]:
+    '''
+    Convert eKomKassa datetime from '01.11.2025 13:25:08' to ISO format with timezone
+    Returns: '2025-11-01T13:25:08.000+03:00[Europe/Moscow]'
+    '''
+    if not dt_str:
+        return None
+    
+    try:
+        naive_dt = datetime.strptime(dt_str, '%d.%m.%Y %H:%M:%S')
+        moscow_tz = ZoneInfo('Europe/Moscow')
+        aware_dt = naive_dt.replace(tzinfo=moscow_tz)
+        iso_str = aware_dt.isoformat(timespec='milliseconds')
+        return f"{iso_str}[Europe/Moscow]"
+    except Exception as e:
+        logger.error(f"Failed to convert datetime '{dt_str}': {str(e)}")
+        return dt_str
 
 def log_to_db(function_name: str, log_level: str, message: str, 
               request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
@@ -184,15 +204,25 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             payload = response_json.get('payload')
             receipt_datetime = payload.get('receipt_datetime') if payload else None
+            timestamp_raw = response_json.get('timestamp')
+            
+            logger.info(f"[DATE] Raw timestamp: '{timestamp_raw}'")
+            logger.info(f"[DATE] Raw receipt_datetime: '{receipt_datetime}'")
+            
+            timestamp_iso = convert_ekomkassa_datetime(timestamp_raw)
+            receipt_datetime_iso = convert_ekomkassa_datetime(receipt_datetime) if ekomkassa_status == 'done' else None
+            
+            logger.info(f"[DATE] Converted timestamp: '{timestamp_iso}'")
+            logger.info(f"[DATE] Converted receipt_datetime: '{receipt_datetime_iso}'")
             
             ferma_data = {
                 'StatusCode': status_code,
                 'StatusName': status_name,
                 'StatusMessage': status_message,
-                'ModifiedDateUtc': response_json.get('timestamp'),
-                'ReceiptDateUtc': receipt_datetime,
-                'ModifiedDateTimeIso': response_json.get('timestamp'),
-                'ReceiptDateTimeIso': receipt_datetime,
+                'ModifiedDateUtc': timestamp_iso,
+                'ReceiptDateUtc': receipt_datetime_iso,
+                'ModifiedDateTimeIso': timestamp_iso,
+                'ReceiptDateTimeIso': receipt_datetime_iso,
                 'ReceiptId': uuid
             }
             
