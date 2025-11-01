@@ -57,7 +57,10 @@ export const useGatewayStatus = ({ authToken, authForm, handleAuth }: UseGateway
       const ekomkassaResponse = data.ekomkassa_response || data;
       setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
       
-      const converterResponse = data.Status && data.Data ? data : {
+      const converterResponse = data.Status && data.Data ? {
+        Status: data.Status,
+        Data: data.Data
+      } : {
         Status: 'Failed',
         Error: { Code: 'UNEXPECTED_RESPONSE', Message: 'Unexpected backend response format' }
       };
