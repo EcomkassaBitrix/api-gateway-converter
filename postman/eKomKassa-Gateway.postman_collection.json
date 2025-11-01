@@ -1,0 +1,391 @@
+{
+	"info": {
+		"_postman_id": "ekomkassa-gateway-2025",
+		"name": "eKomKassa Gateway API",
+		"description": "Ferma-compatible API для работы с eKomKassa через Gateway",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Get Auth Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Автоматически сохраняем токен в переменную окружения",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.AuthToken) {",
+									"        pm.environment.set('auth_token', jsonData.Data.AuthToken);",
+									"        console.log('Auth token saved:', jsonData.Data.AuthToken);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Login\": \"{{login}}\",\n  \"Password\": \"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/Authorization/CreateAuthToken",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"Authorization",
+								"CreateAuthToken"
+							]
+						},
+						"description": "Получение токена авторизации для работы с API"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Receipt",
+			"item": [
+				{
+					"name": "Create Receipt (Income)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Автоматически сохраняем UUID чека в переменную",
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.ReceiptId) {",
+									"        pm.environment.set('receipt_uuid', jsonData.Data.ReceiptId);",
+									"        console.log('Receipt UUID saved:', jsonData.Data.ReceiptId);",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Request\": {\n    \"Type\": \"Income\",\n    \"InvoiceId\": \"ORDER-{{$randomInt}}\",\n    \"CustomerReceipt\": {\n      \"TaxationSystem\": \"Common\",\n      \"Email\": \"customer@example.com\",\n      \"Phone\": \"+79001234567\",\n      \"Items\": [\n        {\n          \"Label\": \"Тестовый товар 1\",\n          \"Price\": 150.00,\n          \"Quantity\": 2,\n          \"Amount\": 300.00,\n          \"Vat\": \"VatNo\",\n          \"PaymentMethod\": 4,\n          \"Measure\": \"PIECE\"\n        },\n        {\n          \"Label\": \"Тестовый товар 2\",\n          \"Price\": 200.00,\n          \"Quantity\": 1,\n          \"Amount\": 200.00,\n          \"Vat\": \"Vat20\",\n          \"PaymentMethod\": 4,\n          \"Measure\": \"PIECE\"\n        }\n      ],\n      \"CashlessPayments\": [\n        {\n          \"PaymentSum\": 500.00\n        }\n      ]\n    }\n  },\n  \"AuthToken\": \"{{auth_token}}\",\n  \"GroupCode\": \"{{group_code}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kkt/cloud/receipt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание чека прихода (продажа)"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Receipt (Income Return)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"Request\": {\n    \"Type\": \"IncomeReturn\",\n    \"InvoiceId\": \"RETURN-{{$randomInt}}\",\n    \"CustomerReceipt\": {\n      \"TaxationSystem\": \"Common\",\n      \"Email\": \"customer@example.com\",\n      \"Items\": [\n        {\n          \"Label\": \"Возврат товара\",\n          \"Price\": 100.00,\n          \"Quantity\": 1,\n          \"Amount\": 100.00,\n          \"Vat\": \"VatNo\",\n          \"PaymentMethod\": 4\n        }\n      ],\n      \"CashlessPayments\": [\n        {\n          \"PaymentSum\": 100.00\n        }\n      ]\n    }\n  },\n  \"AuthToken\": \"{{auth_token}}\",\n  \"GroupCode\": \"{{group_code}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kkt/cloud/receipt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание чека возврата прихода"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Receipt (Simple Format)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{auth_token}}\",\n  \"group_code\": \"{{group_code}}\",\n  \"operation\": \"sell\",\n  \"timestamp\": \"01.11.2025 12:00:00\",\n  \"external_id\": \"SIMPLE-{{$randomInt}}\",\n  \"receipt\": {\n    \"client\": {\n      \"email\": \"test@example.com\"\n    },\n    \"company\": {\n      \"email\": \"shop@example.com\",\n      \"sno\": \"osn\",\n      \"inn\": \"0000000000\",\n      \"payment_address\": \"https://example.com\"\n    },\n    \"items\": [\n      {\n        \"name\": \"Простой товар\",\n        \"price\": 100.0,\n        \"quantity\": 1.0,\n        \"sum\": 100.0,\n        \"payment_method\": \"full_payment\",\n        \"payment_object\": 4,\n        \"measure\": 0,\n        \"vat\": {\n          \"type\": \"none\"\n        }\n      }\n    ],\n    \"payments\": [\n      {\n        \"type\": 1,\n        \"sum\": 100.0\n      }\n    ],\n    \"total\": 100.0\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/kkt/cloud/receipt",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"receipt"
+							]
+						},
+						"description": "Создание чека в упрощенном формате (прямая проксация в eKomKassa)"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Status",
+			"item": [
+				{
+					"name": "Get Receipt Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kkt/cloud/status?uuid={{receipt_uuid}}&AuthToken={{auth_token}}&GroupCode={{group_code}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "{{receipt_uuid}}",
+									"description": "UUID чека"
+								},
+								{
+									"key": "AuthToken",
+									"value": "{{auth_token}}",
+									"description": "Токен авторизации"
+								},
+								{
+									"key": "GroupCode",
+									"value": "{{group_code}}",
+									"description": "Код группы ККТ"
+								}
+							]
+						},
+						"description": "Получение статуса чека по UUID"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Receipt Status (Manual UUID)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/kkt/cloud/status?uuid=YOUR_UUID_HERE&AuthToken={{auth_token}}&GroupCode={{group_code}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"kkt",
+								"cloud",
+								"status"
+							],
+							"query": [
+								{
+									"key": "uuid",
+									"value": "YOUR_UUID_HERE",
+									"description": "Замените на реальный UUID чека"
+								},
+								{
+									"key": "AuthToken",
+									"value": "{{auth_token}}"
+								},
+								{
+									"key": "GroupCode",
+									"value": "{{group_code}}"
+								}
+							]
+						},
+						"description": "Проверка статуса с ручным вводом UUID"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Health & Admin",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Проверка работоспособности сервиса"
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"login\": \"admin\",\n  \"password\": \"GatewayEcomkassa\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"login"
+							]
+						},
+						"description": "Авторизация в админ-панели"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/logs?limit=50&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "function",
+									"value": "receipt",
+									"disabled": true
+								},
+								{
+									"key": "level",
+									"value": "ERROR",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Получение логов (требуется авторизация)"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Request Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/request-logs?limit=50&offset=0",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"request-logs"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "50"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "path",
+									"value": "/api/kkt/cloud/receipt",
+									"disabled": true
+								},
+								{
+									"key": "status",
+									"value": "200",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Получение детальных логов запросов"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "https://ekomkassa-gateway.node213229-env-6305819.ams.jenv.jelastic.team",
+			"type": "string"
+		}
+	]
+}
