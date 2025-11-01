@@ -54,11 +54,9 @@ export const useGatewayStatus = ({ authToken, authForm, handleAuth }: UseGateway
         data = await response.json();
       }
       
-      // Оригинальный ответ от eKomKassa находится в data.Data (внутри API-конвертера)
-      const ekomkassaRawResponse = data.Data || {};
-      setStatusResult(JSON.stringify(ekomkassaRawResponse, null, 2));
+      const ekomkassaResponse = data.ekomkassa_response || data;
+      setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
       
-      // Полный ответ API-конвертера (Status + Data в формате Ferma)
       const converterResponse = data.Status && data.Data ? data : {
         Status: 'Failed',
         Error: { Code: 'UNEXPECTED_RESPONSE', Message: 'Unexpected backend response format' }
