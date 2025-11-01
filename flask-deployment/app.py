@@ -453,7 +453,7 @@ def status_handler():
     
     # Ferma использует AuthToken, GroupCode, uuid
     auth_token = request.args.get('AuthToken') or request.args.get('token')
-    group_code = request.args.get('GroupCode') or request.args.get('group_code', '700')
+    group_code = (request.args.get('GroupCode') or request.args.get('group_code', '700')).lower()
     uuid = request.args.get('uuid') or request.args.get('Uuid')
     
     logger.info(f"[STATUS] Incoming request: uuid={uuid}, GroupCode={group_code}, AuthToken={'***' if auth_token else None}")
@@ -663,7 +663,7 @@ def receipt_handler():
     # AuthToken или token (совместимость)
     auth_token = body_data.get('AuthToken') or body_data.get('token')
     # GroupCode или group_code (совместимость)
-    group_code = body_data.get('GroupCode') or body_data.get('group_code', '700')
+    group_code = (body_data.get('GroupCode') or body_data.get('group_code', '700')).lower()
     
     if ferma_request:
         result = convert_ferma_to_ekomkassa(ferma_request, auth_token, 
