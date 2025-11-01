@@ -27,6 +27,24 @@ logger = logging.getLogger(__name__)
 # Database URL from environment
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
+# eKomKassa environment: 'production' or 'sandbox'
+EKOMKASSA_ENV = os.environ.get('EKOMKASSA_ENV', 'sandbox')
+
+# eKomKassa URLs
+if EKOMKASSA_ENV == 'production':
+    EKOMKASSA_BASE_URL = 'https://gw.ecomkassa.ru'
+    EKOMKASSA_AUTH_URL = f'{EKOMKASSA_BASE_URL}/api/Authorization/CreateAuthToken'
+    EKOMKASSA_RECEIPT_URL_TEMPLATE = f'{EKOMKASSA_BASE_URL}/api/kkt/cloud/receipt'
+    EKOMKASSA_STATUS_URL_TEMPLATE = f'{EKOMKASSA_BASE_URL}/api/kkt/cloud/status'
+else:
+    EKOMKASSA_BASE_URL = 'https://app.ecomkassa.ru'
+    EKOMKASSA_AUTH_URL = f'{EKOMKASSA_BASE_URL}/fiscalorder/v5/getToken'
+    EKOMKASSA_RECEIPT_URL_TEMPLATE = f'{EKOMKASSA_BASE_URL}/fiscalorder/v5/{{group_code}}/{{operation}}'
+    EKOMKASSA_STATUS_URL_TEMPLATE = f'{EKOMKASSA_BASE_URL}/fiscalorder/v5/{{group_code}}/report/{{uuid}}'
+
+logger.info(f'eKomKassa environment: {EKOMKASSA_ENV}')
+logger.info(f'eKomKassa auth URL: {EKOMKASSA_AUTH_URL}')
+
 # Admin credentials
 ADMIN_LOGIN = 'admin'
 ADMIN_PASSWORD = 'GatewayEcomkassa'
@@ -286,7 +304,7 @@ def auth_handler():
         logger.info(f"[AUTH] Request to eKomKassa: {json.dumps({'login': login, 'pass': '***'})}")
         
         response = requests.post(
-            'https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            EKOMKASSA_AUTH_URL,
             json=request_payload,
             headers={'Content-Type': 'application/json'},
             timeout=10
@@ -353,7 +371,7 @@ def auth_handler():
             user_agent=request.headers.get('User-Agent', ''),
             request_headers=dict(request.headers),
             request_body=body_data,
-            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_url=EKOMKASSA_AUTH_URL,
             target_method='POST',
             target_headers={'Content-Type': 'application/json'},
             target_body=request_payload,
@@ -398,7 +416,7 @@ def auth_handler():
             user_agent=request.headers.get('User-Agent', ''),
             request_headers=dict(request.headers),
             request_body=body_data,
-            target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
+            target_url=EKOMKASSA_AUTH_URL,
             target_method='POST',
             client_response_status=500,
             client_response_body=ferma_error_response,
