@@ -128,13 +128,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ferma_response = {
                 'Status': 'Success',
                 'Data': {
-                    'AuthToken': response_json['token']
-                },
-                'ekomkassa_response': response_json
+                    'AuthToken': response_json['token'],
+                    'ExpirationDateUtc': '2099-12-31T23:59:59'
+                }
             }
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa auth response received',
                       request_data={'login': login},
-                      response_data=ferma_response,
+                      response_data={'ferma_format': ferma_response, 'ekomkassa_raw': response_json},
                       request_id=request_id,
                       duration_ms=duration_ms,
                       status_code=200)
@@ -165,12 +165,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Error': {
                     'Code': error_code,
                     'Message': error_message
-                },
-                'ekomkassa_response': response_json
+                }
             }
             log_to_db('ekomkassa-auth', 'ERROR', 'eKomKassa auth error response received',
                       request_data={'login': login},
-                      response_data=ferma_error,
+                      response_data={'ferma_format': ferma_error, 'ekomkassa_raw': response_json},
                       request_id=request_id,
                       duration_ms=duration_ms,
                       status_code=response.status_code)

@@ -21,7 +21,7 @@ def refresh_token(login: str, password: str) -> Optional[str]:
         )
         if auth_response.status_code == 200:
             auth_data = auth_response.json()
-            return auth_data.get('token')
+            return auth_data.get('Data', {}).get('AuthToken')
     except Exception as e:
         logger.error(f"[RECEIPT] Failed to refresh token: {str(e)}")
     return None
@@ -369,8 +369,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                     'Status': 'Success',
                     'Data': {
                         'ReceiptId': response_json.get('uuid', '')
-                    },
-                    'ekomkassa_response': response_json
+                    }
                 }
                 return {
                     'statusCode': 200,
@@ -399,8 +398,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'Error': {
                 'Code': error_code,
                 'Message': error_message
-            },
-            'ekomkassa_response': response_json
+            }
         }
         
         return {
@@ -422,8 +420,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'Error': {
                 'Code': 500,
                 'Message': f'eKomKassa API error: {str(e)}'
-            },
-            'ekomkassa_response': {}
+            }
         }
         return {
             'statusCode': 500,

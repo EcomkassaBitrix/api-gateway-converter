@@ -115,7 +115,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
             if auth_response.status_code == 200:
                 auth_data = auth_response.json()
-                return auth_data.get('token')
+                return auth_data.get('Data', {}).get('AuthToken')
         except Exception as e:
             logger.error(f"[STATUS] Failed to refresh token: {str(e)}")
         return None
@@ -214,8 +214,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             ferma_response = {
                 'Status': 'Success',
-                'Data': ferma_data,
-                'ekomkassa_response': response_json
+                'Data': ferma_data
             }
             
             return {
@@ -245,8 +244,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Error': {
                     'Code': error_code,
                     'Message': error_message
-                },
-                'ekomkassa_response': response_json
+                }
             }
             
             return {
