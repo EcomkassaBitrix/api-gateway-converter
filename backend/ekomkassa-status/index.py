@@ -10,26 +10,33 @@ from datetime import datetime, timezone, timedelta
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def convert_ekomkassa_datetime(dt_str: Optional[str]) -> Optional[str]:
+def convert_ekomkassa_datetime(dt_str: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
     '''
-    Convert eKomKassa datetime from '01.11.2025 13:25:08' to ISO format with timezone
-    Returns: '2025-11-01T13:25:08.000+03:00[Europe/Moscow]'
+    Convert eKomKassa datetime from '01.11.2025 13:25:08' to two formats:
+    1. UTC+3 format: '2025-11-01 13:25:08' (for ModifiedDateUtc/ReceiptDateUtc)
+    2. ISO format: '2025-11-01T13:25:08.000+03:00' (for ModifiedDateTimeIso/ReceiptDateTimeIso)
+    Returns: (utc_format, iso_format)
     '''
     if not dt_str:
-        return None
+        return None, None
     
     try:
         logger.info(f"[CONVERT] Input: '{dt_str}'")
         naive_dt = datetime.strptime(dt_str, '%d.%m.%Y %H:%M:%S')
         moscow_tz = timezone(timedelta(hours=3))
         aware_dt = naive_dt.replace(tzinfo=moscow_tz)
-        iso_str = aware_dt.isoformat(timespec='milliseconds')
-        result = f"{iso_str}[Europe/Moscow]"
-        logger.info(f"[CONVERT] Output: '{result}'")
-        return result
+        
+        # UTC+3 формат: "2025-11-01 13:25:08"
+        utc_format = naive_dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        # ISO формат: "2025-11-01T13:25:08.000+03:00"
+        iso_format = aware_dt.isoformat(timespec='milliseconds')
+        
+        logger.info(f"[CONVERT] UTC+3: '{utc_format}', ISO: '{iso_format}'")
+        return utc_format, iso_format
     except Exception as e:
         logger.error(f"[CONVERT] Failed to convert datetime '{dt_str}': {str(e)}")
-        return dt_str
+        return dt_str, dt_str
 
 def log_to_db(function_name: str, log_level: str, message: str, 
               request_data: Optional[Dict] = None, response_data: Optional[Dict] = None,
@@ -211,20 +218,24 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             logger.info(f"[DATE] Raw timestamp: '{timestamp_raw}'")
             logger.info(f"[DATE] Raw receipt_datetime: '{receipt_datetime}'")
             
-            timestamp_iso = convert_ekomkassa_datetime(timestamp_raw)
-            receipt_datetime_iso = convert_ekomkassa_datetime(receipt_datetime) if ekomkassa_status == 'done' else None
+            modified_utc, modified_iso = convert_ekomkassa_datetime(timestamp_raw)
             
-            logger.info(f"[DATE] Converted timestamp: '{timestamp_iso}'")
-            logger.info(f"[DATE] Converted receipt_datetime: '{receipt_datetime_iso}'")
+            if ekomkassa_status == 'done' and receipt_datetime:
+                receipt_utc, receipt_iso = convert_ekomkassa_datetime(receipt_datetime)
+            else:
+                receipt_utc, receipt_iso = None, None
+            
+            logger.info(f"[DATE] Converted modified - UTC: '{modified_utc}', ISO: '{modified_iso}'")
+            logger.info(f"[DATE] Converted receipt - UTC: '{receipt_utc}', ISO: '{receipt_iso}'")
             
             ferma_data = {
                 'StatusCode': status_code,
                 'StatusName': status_name,
                 'StatusMessage': status_message,
-                'ModifiedDateUtc': timestamp_iso,
-                'ReceiptDateUtc': receipt_datetime_iso,
-                'ModifiedDateTimeIso': timestamp_iso,
-                'ReceiptDateTimeIso': receipt_datetime_iso,
+                'ModifiedDateUtc': modified_utc,
+                'ReceiptDateUtc': receipt_utc,
+                'ModifiedDateTimeIso': modified_iso,
+                'ReceiptDateTimeIso': receipt_iso,
                 'ReceiptId': uuid
             }
             
