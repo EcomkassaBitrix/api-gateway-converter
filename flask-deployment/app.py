@@ -290,31 +290,42 @@ def auth_handler():
         except:
             response_json = {'raw': response.text}
         
-        # Конвертируем в формат Ferma (простой объект без Status/Data)
+        # Конвертируем в формат Атол/Ferma
         if response.status_code == 200 and isinstance(response_json, dict) and response_json.get('token'):
             ferma_response = {
-                'AuthToken': response_json['token'],
-                'ExpirationDateUtc': '2099-12-31T23:59:59'
+                'Status': 'Success',
+                'Data': {
+                    'AuthToken': response_json['token'],
+                    'ExpirationDateUtc': '2099-12-31T23:59:59'
+                }
             }
             client_status = 200
         else:
-            # В случае ошибки возвращаем объект с Error
-            error_message = 'Authentication failed'
+            # В случае ошибки возвращаем формат с Status Failed и Error
+            error_code = 2
+            error_message = 'Авторизация невозможна. Неверные учетные данные'
             
             if isinstance(response_json, dict):
+                if response_json.get('code') is not None:
+                    error_code = response_json['code']
                 if response_json.get('text'):
                     error_message = response_json['text']
                 elif response_json.get('error'):
                     error_obj = response_json['error']
                     if isinstance(error_obj, dict):
+                        error_code = error_obj.get('code', error_code)
                         error_message = error_obj.get('text', str(error_obj))
                     elif isinstance(error_obj, str):
                         error_message = error_obj
             
             ferma_response = {
-                'Error': error_message
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code,
+                    'Message': error_message
+                }
             }
-            client_status = response.status_code if response.status_code >= 400 else 401
+            client_status = 401
         
         log_to_db('auth', 'INFO', 'eKomKassa response received',
                   request_data={'login': login},
@@ -353,6 +364,15 @@ def auth_handler():
         duration_ms = int((time.time() - start_time) * 1000)
         error_msg = str(e)
         logger.error(f"[AUTH] eKomKassa API error: {error_msg}")
+        
+        ferma_error_response = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 500,
+                'Message': f'Ошибка подключения к сервису кассы: {error_msg}'
+            }
+        }
+        
         log_to_db('auth', 'ERROR', f'eKomKassa API error: {error_msg}',
                   request_data={'login': login},
                   request_id=request_id,
@@ -371,13 +391,15 @@ def auth_handler():
             target_url='https://app.ecomkassa.ru/fiscalorder/v5/getToken',
             target_method='POST',
             client_response_status=500,
-            client_response_body={'error': error_msg},
+            client_response_body=ferma_error_response,
             duration_ms=duration_ms,
             error_message=error_msg,
             request_id=request_id
         )
         
-        return jsonify({'error': f'eKomKassa API error: {error_msg}'}), 500
+        flask_response = jsonify(ferma_error_response)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 500
 
 
 # ============================================
@@ -437,30 +459,128 @@ def status_handler():
         except:
             response_json = {'raw': response.text}
         
+        # Конвертируем в формат Атол/Ferma
+        if response.status_code == 200 and isinstance(response_json, dict):
+            # Маппинг статусов eKomKassa -> Ferma
+            status_code = 0  # NEW по умолчанию
+            status_name = 'NEW'
+            status_message = 'Запрос на чек получен'
+            
+            ekomkassa_status = response_json.get('status', 'wait')
+            
+            if ekomkassa_status == 'done':
+                status_code = 1
+                status_name = 'PROCESSED'
+                status_message = 'Чек сформирован на кассе'
+            elif ekomkassa_status == 'wait':
+                status_code = 0
+                status_name = 'NEW'
+                status_message = 'Запрос на чек получен'
+            elif ekomkassa_status == 'error':
+                status_code = 2
+                status_name = 'ERROR'
+                status_message = response_json.get('error', {}).get('text', 'Ошибка создания чека')
+            
+            ferma_data = {
+                'StatusCode': status_code,
+                'StatusName': status_name,
+                'StatusMessage': status_message,
+                'ModifiedDateUtc': response_json.get('timestamp', datetime.now().isoformat()),
+                'ReceiptDateUtc': response_json.get('timestamp') if ekomkassa_status == 'done' else None,
+                'ModifiedDateTimeIso': response_json.get('timestamp', datetime.now().isoformat()),
+                'ReceiptDateTimeIso': response_json.get('timestamp') if ekomkassa_status == 'done' else None,
+                'ReceiptId': uuid,
+                'Device': None
+            }
+            
+            # Добавляем информацию об устройстве, если есть
+            if ekomkassa_status == 'done' and response_json.get('payload'):
+                payload = response_json['payload']
+                ferma_data['Device'] = {
+                    'DeviceId': payload.get('kkt_reg_id', ''),
+                    'RNM': payload.get('kkt_reg_id', ''),
+                    'ZN': payload.get('serial_number', ''),
+                    'FN': payload.get('fn_number', ''),
+                    'FDN': payload.get('fiscal_document_number', ''),
+                    'FPD': payload.get('fiscal_document_attribute', ''),
+                    'ShiftNumber': payload.get('shift_number'),
+                    'ReceiptNumInShift': payload.get('receipt_number_in_shift', 0),
+                    'DeviceType': None,
+                    'OfdReceiptUrl': payload.get('ofd_receipt_url', '')
+                }
+            
+            ferma_response = {
+                'Status': 'Success',
+                'Data': ferma_data
+            }
+            client_status = 200
+            
+        elif response.status_code == 404 or (isinstance(response_json, dict) and 
+                                             response_json.get('error', {}).get('code') == 31):
+            # Документ не найден
+            ferma_response = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': 1004,
+                    'Message': 'Документ не найден'
+                }
+            }
+            client_status = 404
+        else:
+            # Другие ошибки
+            error_code = 1000
+            error_message = 'Ошибка получения статуса'
+            
+            if isinstance(response_json, dict) and response_json.get('error'):
+                error_obj = response_json['error']
+                if isinstance(error_obj, dict):
+                    error_code = error_obj.get('code', error_code)
+                    error_message = error_obj.get('text', error_message)
+                elif isinstance(error_obj, str):
+                    error_message = error_obj
+            
+            ferma_response = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code,
+                    'Message': error_message
+                }
+            }
+            client_status = response.status_code
+        
         log_to_db('status', 'INFO', 'eKomKassa status response received',
                   request_data={'uuid': uuid, 'group_code': group_code},
-                  response_data=response_json,
+                  response_data={'ferma_format': ferma_response, 'ekomkassa_raw': response_json},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
-        flask_response = app.response_class(
-            response=response.text,
-            status=response.status_code,
-            mimetype='application/json'
-        )
+        flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
-        return flask_response
+        return flask_response, client_status
         
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.error(f"[STATUS] eKomKassa API error: {str(e)}")
-        log_to_db('status', 'ERROR', f'eKomKassa API error: {str(e)}',
+        error_msg = str(e)
+        logger.error(f"[STATUS] eKomKassa API error: {error_msg}")
+        
+        ferma_error_response = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 500,
+                'Message': f'Ошибка подключения к сервису кассы: {error_msg}'
+            }
+        }
+        
+        log_to_db('status', 'ERROR', f'eKomKassa API error: {error_msg}',
                   request_data={'uuid': uuid, 'group_code': group_code},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
-        return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
+        
+        flask_response = jsonify(ferma_error_response)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 500
 
 
 # ============================================
@@ -657,9 +777,66 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         except:
             response_json = {'raw': response.text}
         
+        # Конвертируем в формат Атол/Ferma
+        if response.status_code == 200 and isinstance(response_json, dict):
+            if response_json.get('uuid'):
+                # Успешное создание чека
+                ferma_response = {
+                    'Status': 'Success',
+                    'Data': {
+                        'ReceiptId': response_json['uuid']
+                    }
+                }
+                client_status = 200
+            elif response_json.get('error'):
+                # Ошибка от eKomKassa
+                error_obj = response_json['error']
+                error_code = error_obj.get('code', 1000) if isinstance(error_obj, dict) else 1000
+                error_message = error_obj.get('text', str(error_obj)) if isinstance(error_obj, dict) else str(error_obj)
+                
+                ferma_response = {
+                    'Status': 'Failed',
+                    'Error': {
+                        'Code': error_code,
+                        'Message': error_message
+                    }
+                }
+                client_status = 400
+            else:
+                # Неизвестный формат ответа
+                ferma_response = {
+                    'Status': 'Failed',
+                    'Error': {
+                        'Code': 1000,
+                        'Message': 'Неизвестный формат ответа от кассы'
+                    }
+                }
+                client_status = 500
+        else:
+            # HTTP ошибка
+            error_message = 'Ошибка создания чека'
+            error_code = response.status_code
+            
+            if isinstance(response_json, dict) and response_json.get('error'):
+                error_obj = response_json['error']
+                if isinstance(error_obj, dict):
+                    error_code = error_obj.get('code', error_code)
+                    error_message = error_obj.get('text', error_message)
+                elif isinstance(error_obj, str):
+                    error_message = error_obj
+            
+            ferma_response = {
+                'Status': 'Failed',
+                'Error': {
+                    'Code': error_code,
+                    'Message': error_message
+                }
+            }
+            client_status = response.status_code
+        
         log_to_db('receipt', 'INFO', 'eKomKassa receipt response received',
                   request_data={'operation': operation, 'group_code': group_code},
-                  response_data=response_json,
+                  response_data={'ferma_format': ferma_response, 'ekomkassa_raw': response_json},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=response.status_code)
@@ -680,29 +857,38 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             response_status=response.status_code,
             response_headers=dict(response.headers),
             response_body=response_json,
-            client_response_status=response.status_code,
-            client_response_body=response_json,
+            client_response_status=client_status,
+            client_response_body=ferma_response,
             duration_ms=duration_ms,
             request_id=request_id
         )
         
-        flask_response = app.response_class(
-            response=response.text,
-            status=response.status_code,
-            mimetype='application/json'
-        )
+        flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
-        return flask_response
+        return flask_response, client_status
         
     except requests.RequestException as e:
         duration_ms = int((time.time() - start_time) * 1000)
-        logger.error(f"[RECEIPT] eKomKassa API error: {str(e)}")
-        log_to_db('receipt', 'ERROR', f'eKomKassa API error: {str(e)}',
+        error_msg = str(e)
+        logger.error(f"[RECEIPT] eKomKassa API error: {error_msg}")
+        
+        ferma_error_response = {
+            'Status': 'Failed',
+            'Error': {
+                'Code': 500,
+                'Message': f'Ошибка подключения к сервису кассы: {error_msg}'
+            }
+        }
+        
+        log_to_db('receipt', 'ERROR', f'eKomKassa API error: {error_msg}',
                   request_data={'operation': operation, 'group_code': group_code},
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=500)
-        return jsonify({'error': f'eKomKassa API error: {str(e)}'}), 500
+        
+        flask_response = jsonify(ferma_error_response)
+        flask_response.headers['Access-Control-Allow-Origin'] = '*'
+        return flask_response, 500
 
 
 def convert_simple_format(body_data: Dict[str, Any], start_time: float, request_id: Optional[str]):
