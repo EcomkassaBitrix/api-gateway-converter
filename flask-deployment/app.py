@@ -569,15 +569,21 @@ def status_handler():
             # Получаем payload для извлечения данных
             payload = response_json.get('payload', {})
             
+            logger.info(f"[STATUS] ekomkassa_status: '{ekomkassa_status}'")
+            logger.info(f"[STATUS] timestamp: '{timestamp}'")
+            logger.info(f"[STATUS] payload exists: {bool(payload)}")
+            if payload:
+                logger.info(f"[STATUS] payload.receipt_datetime: '{payload.get('receipt_datetime')}'")
+            
             # ReceiptDateUtc заполняем ТОЛЬКО для статуса done (PROCEED)
-            # Берём из payload.receipt_datetime
+            # Берём из payload.receipt_datetime (НЕ из timestamp!)
             receipt_datetime_str = None
-            if ekomkassa_status == 'done' and payload.get('receipt_datetime'):
+            if ekomkassa_status == 'done' and payload and payload.get('receipt_datetime'):
                 receipt_datetime_str = payload['receipt_datetime']
-                logger.info(f"[STATUS] receipt_datetime from payload: '{receipt_datetime_str}'")
+                logger.info(f"[STATUS] Using receipt_datetime: '{receipt_datetime_str}'")
             
             receipt_date_iso = convert_date_to_iso(receipt_datetime_str) if receipt_datetime_str else None
-            logger.info(f"[STATUS] Converted receipt_date_iso: '{receipt_date_iso}'")
+            logger.info(f"[STATUS] Final ReceiptDateUtc: '{receipt_date_iso}'")
             
             ferma_data = {
                 'StatusCode': status_code,
