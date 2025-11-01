@@ -41,15 +41,27 @@ export const useGatewayAuth = () => {
         data = { error: 'Некорректный ответ от сервера' };
       }
       
-      if (response.ok && data.Data && data.Data.AuthToken) {
-        const token = data.Data.AuthToken;
+      const token = data.token || data.Data?.AuthToken;
+      
+      if (response.ok && token) {
         setAuthToken(token);
         setCurrentToken(token);
         setAuthCredentials(authForm.login, authForm.password);
-        setAuthResponse(data);
+        
+        const fermaFormat = {
+          Status: 'Success',
+          Data: {
+            AuthToken: token,
+            ExpirationDateUtc: data.exp 
+              ? new Date(data.exp * 1000).toISOString()
+              : new Date(Date.now() + 86400000).toISOString()
+          }
+        };
+        
+        setAuthResponse(fermaFormat);
         toast.success('Авторизация успешна');
       } else {
-        const errorMsg = data.Error?.Message || data.error || `Ошибка авторизации (HTTP ${response.status})`;
+        const errorMsg = data.text || data.Error?.Message || data.error || `Ошибка авторизации (HTTP ${response.status})`;
         toast.error(errorMsg);
         setAuthResponse(data);
       }
