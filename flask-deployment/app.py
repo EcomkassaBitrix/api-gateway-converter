@@ -529,7 +529,7 @@ def status_handler():
             
             if ekomkassa_status == 'done':
                 status_code = 1
-                status_name = 'PROCESSED'
+                status_name = 'PROCEED'
                 status_message = 'Чек сформирован на кассе'
             elif ekomkassa_status == 'wait':
                 status_code = 0
@@ -564,7 +564,18 @@ def status_handler():
             timestamp = response_json.get('timestamp')
             now_iso = f"{datetime.now().isoformat()}.000+03:00[Europe/Moscow]"
             modified_date_iso = convert_date_to_iso(timestamp) if timestamp else now_iso
-            receipt_date_iso = convert_date_to_iso(timestamp) if ekomkassa_status == 'done' and timestamp else None
+            
+            # Получаем payload для извлечения данных
+            payload = response_json.get('payload', {})
+            
+            # ReceiptDateUtc берём из receipt_datetime (если done) или timestamp
+            receipt_datetime_str = None
+            if ekomkassa_status == 'done' and payload.get('receipt_datetime'):
+                receipt_datetime_str = payload['receipt_datetime']
+            elif timestamp:
+                receipt_datetime_str = timestamp
+            
+            receipt_date_iso = convert_date_to_iso(receipt_datetime_str) if receipt_datetime_str else None
             
             ferma_data = {
                 'StatusCode': status_code,
@@ -578,20 +589,22 @@ def status_handler():
                 'Device': None
             }
             
-            # Добавляем информацию об устройстве, если есть
-            if ekomkassa_status == 'done' and response_json.get('payload'):
-                payload = response_json['payload']
+            # Добавляем информацию об устройстве из payload
+            if payload:
+                # OfdReceiptUrl берём из permalink (приоритет) или ofd_receipt_url
+                ofd_url = response_json.get('permalink') or payload.get('ofd_receipt_url') or None
+                
                 ferma_data['Device'] = {
-                    'DeviceId': payload.get('kkt_reg_id', ''),
-                    'RNM': payload.get('kkt_reg_id', ''),
-                    'ZN': payload.get('serial_number', ''),
-                    'FN': payload.get('fn_number', ''),
-                    'FDN': payload.get('fiscal_document_number', ''),
-                    'FPD': payload.get('fiscal_document_attribute', ''),
-                    'ShiftNumber': payload.get('shift_number'),
-                    'ReceiptNumInShift': payload.get('receipt_number_in_shift', 0),
+                    'DeviceId': payload.get('kkt_reg_id') or None,
+                    'RNM': payload.get('ecr_registration_number') or None,  # Регистрационный номер ККТ
+                    'ZN': payload.get('serial_number') or None,  # Заводской номер
+                    'FN': payload.get('fn_number') or None,  # Номер ФН
+                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') else None,  # Номер ФД
+                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') else None,  # ФПД
+                    'ShiftNumber': payload.get('shift_number') or None,  # Номер смены
+                    'ReceiptNumInShift': payload.get('fiscal_receipt_number') or None,  # Номер чека в смене
                     'DeviceType': None,
-                    'OfdReceiptUrl': payload.get('ofd_receipt_url', '')
+                    'OfdReceiptUrl': ofd_url
                 }
             
             ferma_response = create_ferma_response(status='Success', data=ferma_data)
