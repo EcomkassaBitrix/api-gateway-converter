@@ -51,6 +51,15 @@ logger.info(f'eKomKassa auth URL: {EKOMKASSA_AUTH_URL}')
 ADMIN_LOGIN = 'admin'
 ADMIN_PASSWORD = 'GatewayEcomkassa'
 
+def convert_ekomkassa_datetime(dt_str: str) -> str:
+    '''Convert eKomKassa datetime to ISO 8601 with timezone'''
+    try:
+        dt = datetime.strptime(dt_str, '%d.%m.%Y %H:%M:%S')
+        return dt.strftime('%Y-%m-%dT%H:%M:%S.000+03:00[Europe/Moscow]')
+    except Exception as e:
+        logger.error(f"Failed to convert datetime '{dt_str}': {e}")
+        return dt_str
+
 def create_ferma_response(status: str, data: Optional[Dict] = None, error: Optional[Dict] = None) -> OrderedDict:
     '''Helper function to create Ferma-compatible response with guaranteed field order'''
     response = OrderedDict()
@@ -549,50 +558,28 @@ def status_handler():
                     error_message = response_json['message']
                 status_message = error_message
             
-            # Конвертируем даты из формата "01.11.2025 11:50:12" в ISO с миллисекундами и таймзоной
-            def convert_date_to_iso(date_str):
-                if not date_str:
-                    return None
-                try:
-                    # Парсим формат "01.11.2025 11:50:12"
-                    dt = datetime.strptime(date_str, '%d.%m.%Y %H:%M:%S')
-                    # Добавляем миллисекунды и таймзону: "2025-11-01T12:05:58.000+03:00[Europe/Moscow]"
-                    result = f"{dt.isoformat()}.000+03:00[Europe/Moscow]"
-                    logger.info(f"[DATE] Converted '{date_str}' -> '{result}'")
-                    return result
-                except Exception as e:
-                    logger.error(f"[DATE] Conversion FAILED for '{date_str}': {e}")
-                    return date_str
-            
-            timestamp = response_json.get('timestamp')
-            now_iso = f"{datetime.now().isoformat()}.000+03:00[Europe/Moscow]"
-            
-            logger.info(f"[STATUS] Raw timestamp: '{timestamp}'")
-            modified_date_iso = convert_date_to_iso(timestamp) if timestamp else now_iso
-            
             # Получаем payload для извлечения данных
             payload = response_json.get('payload', {})
-            logger.info(f"[STATUS] Payload exists: {bool(payload)}")
+            timestamp_raw = response_json.get('timestamp')
+            receipt_datetime = payload.get('receipt_datetime') if payload else None
             
-            # ReceiptDateUtc и ReceiptDateTimeIso заполняем ТОЛЬКО для статуса done (PROCEED)
-            # Берём из payload.receipt_datetime
-            receipt_date_iso = None
-            if ekomkassa_status == 'done':
-                logger.info(f"[STATUS] Status is 'done', checking receipt_datetime...")
-                if payload and payload.get('receipt_datetime'):
-                    logger.info(f"[STATUS] Raw receipt_datetime: '{payload.get('receipt_datetime')}'")
-                    # Конвертируем receipt_datetime в ISO формат
-                    receipt_date_iso = convert_date_to_iso(payload['receipt_datetime'])
-                else:
-                    logger.warning(f"[STATUS] No receipt_datetime in payload!")
+            logger.info(f"[DATE] Raw timestamp: '{timestamp_raw}'")
+            logger.info(f"[DATE] Raw receipt_datetime: '{receipt_datetime}'")
+            
+            # Конвертируем даты с помощью функции
+            timestamp_iso = convert_ekomkassa_datetime(timestamp_raw) if timestamp_raw else None
+            receipt_date_iso = convert_ekomkassa_datetime(receipt_datetime) if ekomkassa_status == 'done' and receipt_datetime else None
+            
+            logger.info(f"[DATE] Converted timestamp: '{timestamp_iso}'")
+            logger.info(f"[DATE] Converted receipt_datetime: '{receipt_date_iso}'")
             
             ferma_data = {
                 'StatusCode': status_code,
                 'StatusName': status_name,
                 'StatusMessage': status_message,
-                'ModifiedDateUtc': modified_date_iso,
+                'ModifiedDateUtc': timestamp_iso,
                 'ReceiptDateUtc': receipt_date_iso,
-                'ModifiedDateTimeIso': modified_date_iso,
+                'ModifiedDateTimeIso': timestamp_iso,
                 'ReceiptDateTimeIso': receipt_date_iso,
                 'ReceiptId': uuid,
                 'Device': None
