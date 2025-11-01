@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 builds
+
+# Environment variables
+.env
+flask-deployment/.env
