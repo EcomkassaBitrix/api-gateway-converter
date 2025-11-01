@@ -130,7 +130,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Data': {
                     'AuthToken': response_json['token'],
                     'ExpirationDateUtc': '2099-12-31T23:59:59'
-                }
+                },
+                'ekomkassa_response': response_json
             }
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa auth response received',
                       request_data={'login': login},

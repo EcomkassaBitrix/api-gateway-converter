@@ -158,23 +158,14 @@ export const useGatewaySandbox = ({ authToken, authForm }: UseGatewaySandboxProp
       
       const data = await response.json();
       
-      const ekomkassaResponse = data.ekomkassa_response || data;
+      const ekomkassaResponse = data.ekomkassa_response || {};
       setAtolOutput(JSON.stringify(ekomkassaResponse, null, 2));
       
-      const fermaResponse: any = {
-        Status: response.ok ? 'Success' : 'Failed',
-        Data: {
-          ReceiptId: ekomkassaResponse.uuid || ''
-        }
+      const fermaResponse = {
+        Status: data.Status || 'Failed',
+        Data: data.Data || {},
+        Error: data.Error
       };
-      
-      if (!response.ok || ekomkassaResponse.error) {
-        fermaResponse.Status = 'Failed';
-        fermaResponse.Error = {
-          Code: ekomkassaResponse.error?.code || ekomkassaResponse.error || 'UNKNOWN_ERROR',
-          Message: ekomkassaResponse.error?.text || ekomkassaResponse.error || 'Неизвестная ошибка'
-        };
-      }
       
       setFermaOutput(JSON.stringify(fermaResponse, null, 2));
       

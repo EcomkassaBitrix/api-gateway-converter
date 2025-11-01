@@ -369,7 +369,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                     'Status': 'Success',
                     'Data': {
                         'ReceiptId': response_json.get('uuid', '')
-                    }
+                    },
+                    'ekomkassa_response': response_json
                 }
                 return {
                     'statusCode': 200,

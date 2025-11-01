@@ -214,7 +214,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             ferma_response = {
                 'Status': 'Success',
-                'Data': ferma_data
+                'Data': ferma_data,
+                'ekomkassa_response': response_json
             }
             
             return {
