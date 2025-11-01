@@ -1099,7 +1099,7 @@ def get_logs():
         if not DATABASE_URL:
             return jsonify({'error': 'Database not configured'}), 500
         
-        limit = int(request.args.get('limit', 100))
+        limit = int(request.args.get('limit', 500))
         offset = int(request.args.get('offset', 0))
         function_name = request.args.get('function')
         log_level = request.args.get('level')
@@ -1158,7 +1158,7 @@ def get_request_logs():
         if not DATABASE_URL:
             return jsonify({'error': 'Database not configured'}), 500
         
-        limit = int(request.args.get('limit', 100))
+        limit = int(request.args.get('limit', 500))
         offset = int(request.args.get('offset', 0))
         path_filter = request.args.get('path')
         status_filter = request.args.get('status')
