@@ -18,6 +18,7 @@ STATIC_FOLDER = os.path.join(BASE_DIR, 'dist')
 # Чтобы наши кастомные роуты работали правильно для SPA
 app = Flask(__name__, static_folder=None, static_url_path=None)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'ecomkassa-gateway-secret-key-2025')
+app.json.sort_keys = False  # Сохраняем порядок ключей в JSON
 
 logging.basicConfig(
     level=logging.INFO,
