@@ -661,6 +661,19 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                                group_code: str, start_time: float, request_id: Optional[str]):
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
+    # Определяем operation в самом начале для использования в логах
+    operation_mapping = {
+        'Income': 'sell',
+        'IncomeReturn': 'sell_refund',
+        'Outcome': 'buy',
+        'OutcomeReturn': 'buy_refund',
+        'IncomeCorrection': 'sell_correction',
+        'SellCorrection': 'sell_correction',
+        'OutcomeCorrection': 'buy_correction',
+        'BuyCorrection': 'buy_correction'
+    }
+    operation = operation_mapping.get(ferma_request.get('Type', 'Income'), 'sell')
+    
     if not token:
         ferma_error = {
             'Status': 'Failed',
@@ -763,20 +776,6 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     }
     
     sno = taxation_system_mapping.get(receipt.get('TaxationSystem', 'Common'), 'osn')
-    
-    # Operation mapping
-    operation_mapping = {
-        'Income': 'sell',
-        'IncomeReturn': 'sell_refund',
-        'Outcome': 'buy',
-        'OutcomeReturn': 'buy_refund',
-        'IncomeCorrection': 'sell_correction',
-        'SellCorrection': 'sell_correction',
-        'OutcomeCorrection': 'buy_correction',
-        'BuyCorrection': 'buy_correction'
-    }
-    
-    operation = operation_mapping.get(ferma_request.get('Type', 'Income'), 'sell')
     
     # Client info
     client_info = {}
@@ -1359,7 +1358,7 @@ def view_request_logs():
         
         cur.execute("""
             SELECT id, created_at, method, path, source_ip, 
-                   client_request_body, client_response_status, 
+                   request_body, client_response_status, 
                    client_response_body, duration_ms
             FROM request_logs 
             ORDER BY id DESC 
