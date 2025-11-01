@@ -557,25 +557,34 @@ def status_handler():
                     # Парсим формат "01.11.2025 11:50:12"
                     dt = datetime.strptime(date_str, '%d.%m.%Y %H:%M:%S')
                     # Добавляем миллисекунды и таймзону: "2025-11-01T12:05:58.000+03:00[Europe/Moscow]"
-                    return f"{dt.isoformat()}.000+03:00[Europe/Moscow]"
+                    result = f"{dt.isoformat()}.000+03:00[Europe/Moscow]"
+                    logger.info(f"[DATE] Converted '{date_str}' -> '{result}'")
+                    return result
                 except Exception as e:
-                    logger.warning(f"Date conversion failed for '{date_str}': {e}")
+                    logger.error(f"[DATE] Conversion FAILED for '{date_str}': {e}")
                     return date_str
             
             timestamp = response_json.get('timestamp')
             now_iso = f"{datetime.now().isoformat()}.000+03:00[Europe/Moscow]"
+            
+            logger.info(f"[STATUS] Raw timestamp: '{timestamp}'")
             modified_date_iso = convert_date_to_iso(timestamp) if timestamp else now_iso
             
             # Получаем payload для извлечения данных
             payload = response_json.get('payload', {})
+            logger.info(f"[STATUS] Payload exists: {bool(payload)}")
             
             # ReceiptDateUtc и ReceiptDateTimeIso заполняем ТОЛЬКО для статуса done (PROCEED)
             # Берём из payload.receipt_datetime
             receipt_date_iso = None
             if ekomkassa_status == 'done':
+                logger.info(f"[STATUS] Status is 'done', checking receipt_datetime...")
                 if payload and payload.get('receipt_datetime'):
+                    logger.info(f"[STATUS] Raw receipt_datetime: '{payload.get('receipt_datetime')}'")
                     # Конвертируем receipt_datetime в ISO формат
                     receipt_date_iso = convert_date_to_iso(payload['receipt_datetime'])
+                else:
+                    logger.warning(f"[STATUS] No receipt_datetime in payload!")
             
             ferma_data = {
                 'StatusCode': status_code,
