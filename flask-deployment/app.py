@@ -599,10 +599,10 @@ def status_handler():
                     'RNM': payload.get('ecr_registration_number') or None,  # Регистрационный номер ККТ
                     'ZN': payload.get('serial_number') or None,  # Заводской номер
                     'FN': payload.get('fn_number') or None,  # Номер ФН
-                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') else None,  # Номер ФД
-                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') else None,  # ФПД
-                    'ShiftNumber': payload.get('shift_number') or None,  # Номер смены
-                    'ReceiptNumInShift': payload.get('fiscal_receipt_number') or None,  # Номер чека в смене
+                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') is not None else None,  # Номер ФД
+                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') is not None else None,  # ФПД (может быть 0)
+                    'ShiftNumber': payload.get('shift_number') if payload.get('shift_number') is not None else None,  # Номер смены
+                    'ReceiptNumInShift': payload.get('fiscal_receipt_number') if payload.get('fiscal_receipt_number') is not None else None,  # Номер чека в смене
                     'DeviceType': None,
                     'OfdReceiptUrl': ofd_url
                 }
