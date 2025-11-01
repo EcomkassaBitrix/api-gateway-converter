@@ -558,7 +558,8 @@ def status_handler():
                     dt = datetime.strptime(date_str, '%d.%m.%Y %H:%M:%S')
                     # Добавляем миллисекунды и таймзону: "2025-11-01T12:05:58.000+03:00[Europe/Moscow]"
                     return f"{dt.isoformat()}.000+03:00[Europe/Moscow]"
-                except:
+                except Exception as e:
+                    logger.warning(f"Date conversion failed for '{date_str}': {e}")
                     return date_str
             
             timestamp = response_json.get('timestamp')
@@ -573,8 +574,10 @@ def status_handler():
             receipt_datetime_str = None
             if ekomkassa_status == 'done' and payload.get('receipt_datetime'):
                 receipt_datetime_str = payload['receipt_datetime']
+                logger.info(f"[STATUS] receipt_datetime from payload: '{receipt_datetime_str}'")
             
             receipt_date_iso = convert_date_to_iso(receipt_datetime_str) if receipt_datetime_str else None
+            logger.info(f"[STATUS] Converted receipt_date_iso: '{receipt_date_iso}'")
             
             ferma_data = {
                 'StatusCode': status_code,
