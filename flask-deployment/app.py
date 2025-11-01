@@ -528,14 +528,29 @@ def status_handler():
                 status_name = 'ERROR'
                 status_message = response_json.get('error', {}).get('text', 'Ошибка создания чека')
             
+            # Конвертируем даты из формата "01.11.2025 11:50:12" в ISO "2025-11-01T11:50:12"
+            def convert_date_to_iso(date_str):
+                if not date_str:
+                    return None
+                try:
+                    # Парсим формат "01.11.2025 11:50:12"
+                    dt = datetime.strptime(date_str, '%d.%m.%Y %H:%M:%S')
+                    return dt.isoformat()
+                except:
+                    return date_str
+            
+            timestamp = response_json.get('timestamp')
+            modified_date_iso = convert_date_to_iso(timestamp) if timestamp else datetime.now().isoformat()
+            receipt_date_iso = convert_date_to_iso(timestamp) if ekomkassa_status == 'done' and timestamp else None
+            
             ferma_data = {
                 'StatusCode': status_code,
                 'StatusName': status_name,
                 'StatusMessage': status_message,
-                'ModifiedDateUtc': response_json.get('timestamp', datetime.now().isoformat()),
-                'ReceiptDateUtc': response_json.get('timestamp') if ekomkassa_status == 'done' else None,
-                'ModifiedDateTimeIso': response_json.get('timestamp', datetime.now().isoformat()),
-                'ReceiptDateTimeIso': response_json.get('timestamp') if ekomkassa_status == 'done' else None,
+                'ModifiedDateUtc': modified_date_iso,
+                'ReceiptDateUtc': receipt_date_iso,
+                'ModifiedDateTimeIso': modified_date_iso,
+                'ReceiptDateTimeIso': receipt_date_iso,
                 'ReceiptId': uuid,
                 'Device': None
             }
