@@ -57,53 +57,10 @@ export const useGatewayStatus = ({ authToken, authForm, handleAuth }: UseGateway
       const ekomkassaResponse = data.ekomkassa_response || data;
       setStatusResult(JSON.stringify(ekomkassaResponse, null, 2));
       
-      const converterResponse: any = {
-        Status: response.ok && ekomkassaResponse.status !== 'fail' ? 'Success' : 'Failed',
-        Data: {} as any
+      const converterResponse = data.Status && data.Data ? data : {
+        Status: 'Failed',
+        Error: { Code: 'UNEXPECTED_RESPONSE', Message: 'Unexpected backend response format' }
       };
-      
-      if (response.ok && ekomkassaResponse.status !== 'fail') {
-        const statusMapping: Record<string, { code: number; name: string; message: string }> = {
-          'wait': { code: 0, name: 'NEW', message: 'Запрос на чек получен' },
-          'done': { code: 1, name: 'PROCESSED', message: 'Чек сформирован на кассе' },
-          'fail': { code: -1, name: 'ERROR', message: 'Ошибка при создании чека' }
-        };
-        
-        const statusInfo = statusMapping[ekomkassaResponse.status] || statusMapping['wait'];
-        
-        converterResponse.Data = {
-          StatusCode: statusInfo.code,
-          StatusName: statusInfo.name,
-          StatusMessage: statusInfo.message,
-          ModifiedDateUtc: ekomkassaResponse.timestamp || new Date().toISOString(),
-          ReceiptDateUtc: ekomkassaResponse.status === 'done' ? (ekomkassaResponse.timestamp || new Date().toISOString()) : null,
-          ModifiedDateTimeIso: ekomkassaResponse.timestamp || new Date().toISOString(),
-          ReceiptDateTimeIso: ekomkassaResponse.status === 'done' ? (ekomkassaResponse.timestamp || new Date().toISOString()) : null,
-          ReceiptId: ekomkassaResponse.uuid || ''
-        };
-        
-        if (ekomkassaResponse.status === 'done' && ekomkassaResponse.payload) {
-          converterResponse.Data.Device = {
-            DeviceId: ekomkassaResponse.payload.device_sn || null,
-            RNM: ekomkassaResponse.payload.device_rn || null,
-            ZN: ekomkassaResponse.payload.zn || null,
-            FN: ekomkassaResponse.payload.fn || null,
-            FDN: ekomkassaResponse.payload.fiscal_document_number?.toString() || null,
-            FPD: ekomkassaResponse.payload.fiscal_document_attribute?.toString() || null,
-            ShiftNumber: ekomkassaResponse.payload.shift_number || null,
-            ReceiptNumInShift: ekomkassaResponse.payload.receipt_number_in_shift || null,
-            DeviceType: null,
-            OfdReceiptUrl: ekomkassaResponse.payload.ofd_receipt_url || null
-          };
-        } else {
-          converterResponse.Data.Device = null;
-        }
-      } else {
-        converterResponse.Error = {
-          Code: ekomkassaResponse.error?.code || 'UNKNOWN_ERROR',
-          Message: ekomkassaResponse.error?.text || 'Ошибка проверки статуса'
-        };
-      }
       
       setStatusConverterResult(JSON.stringify(converterResponse, null, 2));
       
