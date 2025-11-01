@@ -535,24 +535,35 @@ def status_handler():
                 status_code = 0
                 status_name = 'NEW'
                 status_message = 'Запрос на чек получен'
-            elif ekomkassa_status == 'error':
+            elif ekomkassa_status == 'error' or ekomkassa_status == 'fail':
                 status_code = 2
                 status_name = 'ERROR'
-                status_message = response_json.get('error', {}).get('text', 'Ошибка создания чека')
+                # Для fail берём текст ошибки из разных мест
+                error_message = 'Ошибка создания чека'
+                if response_json.get('error'):
+                    if isinstance(response_json['error'], dict):
+                        error_message = response_json['error'].get('text', error_message)
+                    else:
+                        error_message = str(response_json['error'])
+                elif response_json.get('message'):
+                    error_message = response_json['message']
+                status_message = error_message
             
-            # Конвертируем даты из формата "01.11.2025 11:50:12" в ISO "2025-11-01T11:50:12"
+            # Конвертируем даты из формата "01.11.2025 11:50:12" в ISO с миллисекундами и таймзоной
             def convert_date_to_iso(date_str):
                 if not date_str:
                     return None
                 try:
                     # Парсим формат "01.11.2025 11:50:12"
                     dt = datetime.strptime(date_str, '%d.%m.%Y %H:%M:%S')
-                    return dt.isoformat()
+                    # Добавляем миллисекунды и таймзону: "2025-11-01T12:05:58.000+03:00[Europe/Moscow]"
+                    return f"{dt.isoformat()}.000+03:00[Europe/Moscow]"
                 except:
                     return date_str
             
             timestamp = response_json.get('timestamp')
-            modified_date_iso = convert_date_to_iso(timestamp) if timestamp else datetime.now().isoformat()
+            now_iso = f"{datetime.now().isoformat()}.000+03:00[Europe/Moscow]"
+            modified_date_iso = convert_date_to_iso(timestamp) if timestamp else now_iso
             receipt_date_iso = convert_date_to_iso(timestamp) if ekomkassa_status == 'done' and timestamp else None
             
             ferma_data = {
