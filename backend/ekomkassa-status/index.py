@@ -5,8 +5,7 @@ import os
 import time
 import psycopg2
 from typing import Dict, Any, Optional, Tuple
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone, timedelta
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,13 +19,16 @@ def convert_ekomkassa_datetime(dt_str: Optional[str]) -> Optional[str]:
         return None
     
     try:
+        logger.info(f"[CONVERT] Input: '{dt_str}'")
         naive_dt = datetime.strptime(dt_str, '%d.%m.%Y %H:%M:%S')
-        moscow_tz = ZoneInfo('Europe/Moscow')
+        moscow_tz = timezone(timedelta(hours=3))
         aware_dt = naive_dt.replace(tzinfo=moscow_tz)
         iso_str = aware_dt.isoformat(timespec='milliseconds')
-        return f"{iso_str}[Europe/Moscow]"
+        result = f"{iso_str}[Europe/Moscow]"
+        logger.info(f"[CONVERT] Output: '{result}'")
+        return result
     except Exception as e:
-        logger.error(f"Failed to convert datetime '{dt_str}': {str(e)}")
+        logger.error(f"[CONVERT] Failed to convert datetime '{dt_str}': {str(e)}")
         return dt_str
 
 def log_to_db(function_name: str, log_level: str, message: str, 
