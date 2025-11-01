@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify, send_from_directory, session, redirec
 from typing import Dict, Any, Optional
 from datetime import datetime
 from functools import wraps
+from collections import OrderedDict
 
 # Определяем абсолютный путь к dist папке
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +49,16 @@ logger.info(f'eKomKassa auth URL: {EKOMKASSA_AUTH_URL}')
 # Admin credentials
 ADMIN_LOGIN = 'admin'
 ADMIN_PASSWORD = 'GatewayEcomkassa'
+
+def create_ferma_response(status: str, data: Optional[Dict] = None, error: Optional[Dict] = None) -> OrderedDict:
+    '''Helper function to create Ferma-compatible response with guaranteed field order'''
+    response = OrderedDict()
+    response['Status'] = status
+    if data is not None:
+        response['Data'] = data
+    if error is not None:
+        response['Error'] = error
+    return response
 
 def require_auth(f):
     '''Decorator for routes that require authentication'''
@@ -320,13 +331,13 @@ def auth_handler():
         
         # Конвертируем в формат Атол/Ferma
         if response.status_code == 200 and isinstance(response_json, dict) and response_json.get('token'):
-            ferma_response = {
-                'Status': 'Success',
-                'Data': {
+            ferma_response = create_ferma_response(
+                status='Success',
+                data={
                     'AuthToken': response_json['token'],
                     'ExpirationDateUtc': '2099-12-31T23:59:59'
                 }
-            }
+            )
             client_status = 200
         else:
             # В случае ошибки возвращаем формат с Status Failed и Error
@@ -346,13 +357,13 @@ def auth_handler():
                     elif isinstance(error_obj, str):
                         error_message = error_obj
             
-            ferma_response = {
-                'Status': 'Failed',
-                'Error': {
+            ferma_response = create_ferma_response(
+                status='Failed',
+                error={
                     'Code': error_code,
                     'Message': error_message
                 }
-            }
+            )
             client_status = 401
         
         log_to_db('auth', 'INFO', 'eKomKassa response received',
@@ -571,22 +582,16 @@ def status_handler():
                     'OfdReceiptUrl': payload.get('ofd_receipt_url', '')
                 }
             
-            ferma_response = {
-                'Status': 'Success',
-                'Data': ferma_data
-            }
+            ferma_response = create_ferma_response(status='Success', data=ferma_data)
             client_status = 200
             
         elif response.status_code == 404 or (isinstance(response_json, dict) and 
                                              response_json.get('error', {}).get('code') == 31):
             # Документ не найден
-            ferma_response = {
-                'Status': 'Failed',
-                'Error': {
-                    'Code': 1004,
-                    'Message': 'Документ не найден'
-                }
-            }
+            ferma_response = create_ferma_response(
+                status='Failed',
+                error={'Code': 1004, 'Message': 'Документ не найден'}
+            )
             client_status = 404
         else:
             # Другие ошибки
@@ -601,13 +606,10 @@ def status_handler():
                 elif isinstance(error_obj, str):
                     error_message = error_obj
             
-            ferma_response = {
-                'Status': 'Failed',
-                'Error': {
-                    'Code': error_code,
-                    'Message': error_message
-                }
-            }
+            ferma_response = create_ferma_response(
+                status='Failed',
+                error={'Code': error_code, 'Message': error_message}
+            )
             client_status = response.status_code
         
         log_to_db('status', 'INFO', 'eKomKassa status response received',
@@ -865,12 +867,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         if response.status_code == 200 and isinstance(response_json, dict):
             if response_json.get('uuid'):
                 # Успешное создание чека
-                ferma_response = {
-                    'Status': 'Success',
-                    'Data': {
-                        'ReceiptId': response_json['uuid']
-                    }
-                }
+                ferma_response = create_ferma_response(
+                    status='Success',
+                    data={'ReceiptId': response_json['uuid']}
+                )
                 client_status = 200
             elif response_json.get('error'):
                 # Ошибка от eKomKassa
@@ -878,13 +878,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                 error_code = error_obj.get('code', 1000) if isinstance(error_obj, dict) else 1000
                 error_message = error_obj.get('text', str(error_obj)) if isinstance(error_obj, dict) else str(error_obj)
                 
-                ferma_response = {
-                    'Status': 'Failed',
-                    'Error': {
-                        'Code': error_code,
-                        'Message': error_message
-                    }
-                }
+                ferma_response = create_ferma_response(
+                    status='Failed',
+                    error={'Code': error_code, 'Message': error_message}
+                )
                 client_status = 400
             else:
                 # Неизвестный формат ответа
