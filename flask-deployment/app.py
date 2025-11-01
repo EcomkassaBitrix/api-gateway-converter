@@ -290,41 +290,31 @@ def auth_handler():
         except:
             response_json = {'raw': response.text}
         
-        # Конвертируем в формат Ferma
+        # Конвертируем в формат Ferma (простой объект без Status/Data)
         if response.status_code == 200 and isinstance(response_json, dict) and response_json.get('token'):
             ferma_response = {
-                'Status': 'Success',
-                'Data': {
-                    'AuthToken': response_json['token'],
-                    'ExpirationDateUtc': '2099-12-31T23:59:59'
-                },
-                'ekomkassa_response': response_json
+                'AuthToken': response_json['token'],
+                'ExpirationDateUtc': '2099-12-31T23:59:59'
             }
             client_status = 200
         else:
-            error_code = response.status_code
+            # В случае ошибки возвращаем объект с Error
             error_message = 'Authentication failed'
             
             if isinstance(response_json, dict):
-                if 'code' in response_json and 'text' in response_json:
-                    error_code = response_json['code']
+                if response_json.get('text'):
                     error_message = response_json['text']
                 elif response_json.get('error'):
                     error_obj = response_json['error']
                     if isinstance(error_obj, dict):
-                        error_code = error_obj.get('code', response.status_code)
-                        error_message = error_obj.get('text', error_message)
+                        error_message = error_obj.get('text', str(error_obj))
                     elif isinstance(error_obj, str):
                         error_message = error_obj
             
             ferma_response = {
-                'Status': 'Failed',
-                'Error': {
-                    'Code': error_code,
-                    'Message': error_message
-                }
+                'Error': error_message
             }
-            client_status = response.status_code
+            client_status = response.status_code if response.status_code >= 400 else 401
         
         log_to_db('auth', 'INFO', 'eKomKassa response received',
                   request_data={'login': login},
