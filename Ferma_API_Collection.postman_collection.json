@@ -1,0 +1,150 @@
+{
+	"info": {
+		"_postman_id": "ferma-api-collection",
+		"name": "Ferma API Collection",
+		"description": "Collection for testing Ferma API endpoints with eKomkassa integration",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Get Auth Token",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.AuthToken) {",
+							"        pm.environment.set('auth_token', jsonData.Data.AuthToken);",
+							"        console.log('Token saved: ' + jsonData.Data.AuthToken);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"login\": \"your_login_here\",\n  \"password\": \"your_password_here\"\n}"
+				},
+				"url": {
+					"raw": "https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0",
+					"protocol": "https",
+					"host": [
+						"functions",
+						"poehali",
+						"dev"
+					],
+					"path": [
+						"b9da35cd-e700-4dba-bd0a-275e029345e0"
+					]
+				},
+				"description": "Authenticate and get auth token. Replace login and password with your credentials."
+			},
+			"response": []
+		},
+		{
+			"name": "2. Create Receipt",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"if (pm.response.code === 200) {",
+							"    var jsonData = pm.response.json();",
+							"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.Receipt && jsonData.Data.Receipt.Uuid) {",
+							"        pm.environment.set('receipt_uuid', jsonData.Data.Receipt.Uuid);",
+							"        console.log('Receipt UUID saved: ' + jsonData.Data.Receipt.Uuid);",
+							"    }",
+							"}"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Auth-Token",
+						"value": "{{auth_token}}"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"ExternalId\": \"order_12345\",\n  \"Intent\": \"sell\",\n  \"Items\": [\n    {\n      \"Type\": \"position\",\n      \"Name\": \"Товар 1\",\n      \"Price\": 1000.00,\n      \"Quantity\": 2,\n      \"Amount\": 2000.00,\n      \"InfoDiscountAmount\": 0,\n      \"MeasurementUnit\": \"шт\",\n      \"PaymentMethod\": \"full_payment\",\n      \"PaymentObject\": \"commodity\",\n      \"Vat\": {\n        \"Type\": \"none\"\n      }\n    }\n  ],\n  \"Payments\": [\n    {\n      \"Type\": \"card\",\n      \"Amount\": 2000.00\n    }\n  ],\n  \"Total\": 2000.00,\n  \"ClientInfo\": {\n    \"EmailOrPhone\": \"test@example.com\"\n   }\n}"
+				},
+				"url": {
+					"raw": "https://functions.poehali.dev/a1f0f3f0-5a97-4e8e-959b-c62fca95c14a",
+					"protocol": "https",
+					"host": [
+						"functions",
+						"poehali",
+						"dev"
+					],
+					"path": [
+						"a1f0f3f0-5a97-4e8e-959b-c62fca95c14a"
+					]
+				},
+				"description": "Create a new receipt. Requires auth token from step 1."
+			},
+			"response": []
+		},
+		{
+			"name": "3. Check Receipt Status",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "X-Auth-Token",
+						"value": "{{auth_token}}"
+					}
+				],
+				"url": {
+					"raw": "https://functions.poehali.dev/cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a?uuid={{receipt_uuid}}",
+					"protocol": "https",
+					"host": [
+						"functions",
+						"poehali",
+						"dev"
+					],
+					"path": [
+						"cff405b3-8d3a-49e0-bc99-cbd9ade0eb5a"
+					],
+					"query": [
+						{
+							"key": "uuid",
+							"value": "{{receipt_uuid}}"
+						}
+					]
+				},
+				"description": "Check receipt status by UUID. Requires auth token and receipt UUID from previous steps."
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "auth_token",
+			"value": ""
+		},
+		{
+			"key": "receipt_uuid",
+			"value": ""
+		}
+	]
+}
