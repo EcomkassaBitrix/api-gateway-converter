@@ -130,9 +130,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Data': {
                     'AuthToken': response_json['token'],
                     'ExpirationDateUtc': '2099-12-31T23:59:59'
-                },
-                'ekomkassa_response': response_json
+                }
             }
+            logger.info(f"[SUCCESS] Returning Ferma response: {json.dumps(ferma_response)}")
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa auth response received',
                       request_data={'login': login},
                       response_data={'ferma_format': ferma_response, 'ekomkassa_raw': response_json},
