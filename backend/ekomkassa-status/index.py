@@ -257,9 +257,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             ferma_response = {
                 'Status': 'Success',
-                'Data': ferma_data,
-                'ekomkassa_response': response_json
+                'Data': ferma_data
             }
+            
+            logger.info(f"[SUCCESS] Returning Ferma response: {json.dumps(ferma_response)}")
             
             return {
                 'statusCode': 200,
