@@ -86,8 +86,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         except (json.JSONDecodeError, ValueError):
             body_data = {}
     
-    login = body_data.get('login')
-    password = body_data.get('password')
+    login = body_data.get('Login')
+    password = body_data.get('Password')
     
     logger.info(f"[AUTH] Incoming request: login={login}, password={'***' if password else None}")
     log_to_db('ekomkassa-auth', 'INFO', 'Incoming auth request', 

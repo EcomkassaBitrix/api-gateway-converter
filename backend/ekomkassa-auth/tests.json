@@ -16,8 +16,8 @@
       "method": "POST",
       "path": "/",
       "body": {
-        "login": "test_user",
-        "password": "test_pass"
+        "Login": "test_user",
+        "Password": "test_pass"
       },
       "expectedStatus": [200, 401, 500],
       "bodyMatcher": "partial"
