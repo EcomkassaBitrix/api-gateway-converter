@@ -4,6 +4,9 @@
       "name": "Test missing token",
       "method": "POST",
       "path": "/",
+      "headers": {
+        "Origin": "https://poehali.dev"
+      },
       "body": {
         "operation": "sell",
         "items": [
@@ -22,11 +25,46 @@
       "bodyMatcher": "partial"
     },
     {
-      "name": "Test missing items",
+      "name": "Test missing group_code in production",
       "method": "POST",
       "path": "/",
       "headers": {
         "X-Auth-Token": "test_token"
+      },
+      "body": {
+        "Request": {
+          "Type": "Income",
+          "InvoiceId": "test_123",
+          "CustomerReceipt": {
+            "Items": [
+              {
+                "Label": "Test",
+                "Price": 100.0,
+                "Quantity": 1.0,
+                "Amount": 100.0,
+                "Vat": "VatNo"
+              }
+            ]
+          }
+        }
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "Status": "Failed",
+        "Error": {
+          "Code": 400,
+          "Message": "group_code is required"
+        }
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Test missing items",
+      "method": "POST",
+      "path": "/",
+      "headers": {
+        "X-Auth-Token": "test_token",
+        "Origin": "https://poehali.dev"
       },
       "body": {
         "operation": "sell"
@@ -42,7 +80,8 @@
       "method": "POST",
       "path": "/",
       "headers": {
-        "X-Auth-Token": "test_token"
+        "X-Auth-Token": "test_token",
+        "Origin": "https://poehali.dev"
       },
       "body": {
         "Request": {
@@ -67,8 +106,7 @@
               }
             ]
           }
-        },
-        "group_code": "700"
+        }
       },
       "expectedStatus": [200, 401, 500],
       "expectedBody": {

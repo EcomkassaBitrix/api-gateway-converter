@@ -130,8 +130,27 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     login = body_data.get('login')
     password = body_data.get('password')
     
+    # group_code: для песочницы используем дефолт '700', для production API обязателен
+    group_code = body_data.get('group_code')
+    if not group_code:
+        if is_web_debug:
+            group_code = '700'
+        else:
+            return {
+                'statusCode': 400,
+                'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
+                'body': json.dumps({
+                    'Status': 'Failed',
+                    'Error': {
+                        'Code': 400,
+                        'Message': 'group_code is required'
+                    }
+                }),
+                'isBase64Encoded': False
+            }
+    
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, token, body_data.get('group_code', '700'), login, password, context, start_time, request_id, is_web_debug)
+        result = convert_ferma_to_ekomkassa(ferma_request, token, group_code, login, password, context, start_time, request_id, is_web_debug)
     else:
         result = convert_simple_format(body_data, token, login, password, context, start_time, request_id, is_web_debug)
     
