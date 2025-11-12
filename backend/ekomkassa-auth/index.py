@@ -55,6 +55,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     start_time = time.time()
     request_id = getattr(context, 'request_id', None)
     method: str = event.get('httpMethod', 'GET')
+    headers = event.get('headers', {})
+    
+    # Проверяем, запрос от веб-интерфейса (песочницы) или от внешнего API
+    is_web_debug = headers.get('X-Debug-Mode') == 'true' or headers.get('Origin', '').startswith('https://') or headers.get('Referer', '').startswith('https://')
     
     if method == 'OPTIONS':
         return {
@@ -132,6 +136,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'ExpirationDateUtc': '2099-12-31T23:59:59'
                 }
             }
+            
+            # Для веб-интерфейса (песочницы) добавляем отладочную информацию
+            if is_web_debug:
+                ferma_response['ekomkassa_response'] = response_json
+            
             logger.info(f"[SUCCESS] Returning Ferma response: {json.dumps(ferma_response)}")
             log_to_db('ekomkassa-auth', 'INFO', 'eKomKassa auth response received',
                       request_data={'login': login},
