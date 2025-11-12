@@ -57,8 +57,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     method: str = event.get('httpMethod', 'GET')
     headers = event.get('headers', {})
     
-    # Проверяем, запрос от веб-интерфейса (песочницы) или от внешнего API
-    is_web_debug = headers.get('X-Debug-Mode') == 'true' or headers.get('Origin', '').startswith('https://') or headers.get('Referer', '').startswith('https://')
+    # Проверяем, запрос от веб-интерфейса (песочницы) на poehali.dev
+    origin = headers.get('Origin', '').lower()
+    referer = headers.get('Referer', '').lower()
+    is_web_debug = (
+        headers.get('X-Debug-Mode') == 'true' or 
+        'poehali.dev' in origin or 
+        'poehali.dev' in referer or
+        'localhost' in origin or
+        'localhost' in referer
+    )
     
     if method == 'OPTIONS':
         return {
