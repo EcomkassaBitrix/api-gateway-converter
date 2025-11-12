@@ -400,6 +400,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         
         error_code = response.status_code
         error_message = 'Unknown error'
+        error_data = None
         
         if isinstance(response_json, dict):
             if 'code' in response_json and 'text' in response_json:
@@ -412,6 +413,15 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                     error_message = error_obj.get('text', str(error_obj))
                 elif isinstance(error_obj, str):
                     error_message = error_obj
+            
+            # Если есть uuid в ошибке (например, дубликат InvoiceId)
+            if response_json.get('uuid'):
+                invoice_id = ferma_request.get('InvoiceId')
+                error_data = {
+                    'InvoiceId': invoice_id,
+                    'ExistingReceiptId': response_json.get('uuid'),
+                    'ExistingReceiptIds': None
+                }
         
         ferma_error = {
             'Status': 'Failed',
@@ -420,6 +430,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                 'Message': error_message
             }
         }
+        
+        # Добавляем Data только если есть информация о существующем чеке
+        if error_data:
+            ferma_error['Data'] = error_data
         
         return {
             'statusCode': response.status_code,
