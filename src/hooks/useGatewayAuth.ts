@@ -29,8 +29,8 @@ export const useGatewayAuth = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          login: authForm.login,
-          password: authForm.password
+          Login: authForm.login,
+          Password: authForm.password
         })
       });
       
