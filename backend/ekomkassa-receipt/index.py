@@ -16,7 +16,7 @@ def refresh_token(login: str, password: str) -> Optional[str]:
         auth_url = 'https://functions.poehali.dev/b9da35cd-e700-4dba-bd0a-275e029345e0'
         auth_response = requests.post(
             auth_url,
-            json={'login': login, 'password': password},
+            json={'Login': login, 'Password': password},
             timeout=10
         )
         if auth_response.status_code == 200:
@@ -82,6 +82,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     start_time = time.time()
     request_id = getattr(context, 'request_id', None)
     method: str = event.get('httpMethod', 'GET')
+    headers = event.get('headers', {})
     
     if method == 'OPTIONS':
         return {
@@ -89,7 +90,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'POST, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
                 'Access-Control-Max-Age': '86400'
             },
             'body': '',
@@ -104,6 +105,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
+    # Токен из заголовка X-Auth-Token (как в Ferma API)
+    token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
+    
     body_data = json.loads(event.get('body', '{}'))
     
     logger.info(f"[RECEIPT] Incoming request: {json.dumps(body_data, ensure_ascii=False)}")
@@ -116,9 +120,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     password = body_data.get('password')
     
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, body_data.get('token'), body_data.get('group_code', '700'), login, password, context, start_time, request_id)
+        result = convert_ferma_to_ekomkassa(ferma_request, token, body_data.get('group_code', '700'), login, password, context, start_time, request_id)
     else:
-        result = convert_simple_format(body_data, login, password, context, start_time, request_id)
+        result = convert_simple_format(body_data, token, login, password, context, start_time, request_id)
     
     return result
 
@@ -431,11 +435,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
 
 
-def convert_simple_format(body_data: Dict[str, Any], login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
+def convert_simple_format(body_data: Dict[str, Any], token: Optional[str], login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
     '''Конвертация упрощенного формата (для обратной совместимости)'''
     
     operation = body_data.get('operation', 'sell')
-    token = body_data.get('token')
     group_code = body_data.get('group_code', '700')
     items = body_data.get('items', [])
     payments = body_data.get('payments', [])

@@ -13,7 +13,10 @@
     {
       "name": "Missing uuid",
       "method": "GET",
-      "path": "/?AuthToken=test-token",
+      "path": "/",
+      "headers": {
+        "X-Auth-Token": "test-token"
+      },
       "expectedStatus": 400,
       "expectedBody": {
         "error": "uuid required"
@@ -23,7 +26,10 @@
     {
       "name": "Invalid token returns error",
       "method": "GET",
-      "path": "/?AuthToken=invalid-token&uuid=12345678&group_code=700",
+      "path": "/?uuid=12345678&group_code=700",
+      "headers": {
+        "X-Auth-Token": "invalid-token"
+      },
       "expectedStatus": 401,
       "expectedBody": {
         "Status": "Failed"

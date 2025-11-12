@@ -83,6 +83,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     start_time = time.time()
     request_id = getattr(context, 'request_id', None)
     method: str = event.get('httpMethod', 'GET')
+    headers = event.get('headers', {})
     
     if method == 'OPTIONS':
         return {
@@ -90,7 +91,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'headers': {
                 'Access-Control-Allow-Origin': '*',
                 'Access-Control-Allow-Methods': 'GET, OPTIONS',
-                'Access-Control-Allow-Headers': 'Content-Type',
+                'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
                 'Access-Control-Max-Age': '86400'
             },
             'body': '',
@@ -105,8 +106,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
+    # Токен из заголовка X-Auth-Token (как в Ferma API)
+    auth_token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
+    
     params = event.get('queryStringParameters') or {}
-    auth_token = params.get('AuthToken')
     group_code = params.get('group_code', '700')
     uuid = params.get('uuid')
     login = params.get('login')

@@ -25,8 +25,10 @@
       "name": "Test missing items",
       "method": "POST",
       "path": "/",
+      "headers": {
+        "X-Auth-Token": "test_token"
+      },
       "body": {
-        "token": "test_token",
         "operation": "sell"
       },
       "expectedStatus": 400,
@@ -39,6 +41,9 @@
       "name": "Test Ferma format success",
       "method": "POST",
       "path": "/",
+      "headers": {
+        "X-Auth-Token": "test_token"
+      },
       "body": {
         "Request": {
           "Type": "Income",
@@ -63,7 +68,6 @@
             ]
           }
         },
-        "token": "test_token",
         "group_code": "700"
       },
       "expectedStatus": [200, 401, 500],
