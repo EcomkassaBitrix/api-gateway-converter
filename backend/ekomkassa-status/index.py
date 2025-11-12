@@ -109,6 +109,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # Токен из заголовка X-Auth-Token (как в Ferma API)
     auth_token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
     
+    # Проверяем, запрос от веб-интерфейса (песочницы) на poehali.dev
+    origin = headers.get('Origin', '').lower()
+    referer = headers.get('Referer', '').lower()
+    is_web_debug = (
+        headers.get('X-Debug-Mode') == 'true' or 
+        'poehali.dev' in origin or 
+        'poehali.dev' in referer or
+        'localhost' in origin or
+        'localhost' in referer
+    )
+    
     params = event.get('queryStringParameters') or {}
     group_code = params.get('group_code', '700')
     uuid = params.get('uuid')
@@ -260,9 +271,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             
             ferma_response = {
                 'Status': 'Success',
-                'Data': ferma_data,
-                'ekomkassa_response': response_json
+                'Data': ferma_data
             }
+            
+            # Для веб-интерфейса (песочницы) добавляем отладочную информацию
+            if is_web_debug:
+                ferma_response['ekomkassa_response'] = response_json
             
             logger.info(f"[SUCCESS] Returning Ferma response: {json.dumps(ferma_response)}")
             

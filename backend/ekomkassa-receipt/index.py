@@ -108,6 +108,17 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     # Токен из заголовка X-Auth-Token (как в Ferma API)
     token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
     
+    # Проверяем, запрос от веб-интерфейса (песочницы) на poehali.dev
+    origin = headers.get('Origin', '').lower()
+    referer = headers.get('Referer', '').lower()
+    is_web_debug = (
+        headers.get('X-Debug-Mode') == 'true' or 
+        'poehali.dev' in origin or 
+        'poehali.dev' in referer or
+        'localhost' in origin or
+        'localhost' in referer
+    )
+    
     body_data = json.loads(event.get('body', '{}'))
     
     logger.info(f"[RECEIPT] Incoming request: {json.dumps(body_data, ensure_ascii=False)}")
@@ -120,14 +131,14 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     password = body_data.get('password')
     
     if ferma_request:
-        result = convert_ferma_to_ekomkassa(ferma_request, token, body_data.get('group_code', '700'), login, password, context, start_time, request_id)
+        result = convert_ferma_to_ekomkassa(ferma_request, token, body_data.get('group_code', '700'), login, password, context, start_time, request_id, is_web_debug)
     else:
-        result = convert_simple_format(body_data, token, login, password, context, start_time, request_id)
+        result = convert_simple_format(body_data, token, login, password, context, start_time, request_id, is_web_debug)
     
     return result
 
 
-def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
+def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], group_code: str, login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str], is_web_debug: bool = False) -> Dict[str, Any]:
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
     if not token:
@@ -373,9 +384,13 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                     'Status': 'Success',
                     'Data': {
                         'ReceiptId': response_json.get('uuid', '')
-                    },
-                    'ekomkassa_response': response_json
+                    }
                 }
+                
+                # Для веб-интерфейса (песочницы) добавляем отладочную информацию
+                if is_web_debug:
+                    ferma_response['ekomkassa_response'] = response_json
+                
                 return {
                     'statusCode': 200,
                     'headers': {'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json'},
@@ -435,7 +450,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
 
 
-def convert_simple_format(body_data: Dict[str, Any], token: Optional[str], login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str]) -> Dict[str, Any]:
+def convert_simple_format(body_data: Dict[str, Any], token: Optional[str], login: Optional[str], password: Optional[str], context: Any, start_time: float, request_id: Optional[str], is_web_debug: bool = False) -> Dict[str, Any]:
     '''Конвертация упрощенного формата (для обратной совместимости)'''
     
     operation = body_data.get('operation', 'sell')
