@@ -62,9 +62,9 @@
 						"exec": [
 							"if (pm.response.code === 200) {",
 							"    var jsonData = pm.response.json();",
-							"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.Receipt && jsonData.Data.Receipt.Uuid) {",
-							"        pm.environment.set('receipt_uuid', jsonData.Data.Receipt.Uuid);",
-							"        console.log('Receipt UUID saved: ' + jsonData.Data.Receipt.Uuid);",
+							"    if (jsonData.Status === 'Success' && jsonData.Data && jsonData.Data.ReceiptId) {",
+							"        pm.environment.set('receipt_uuid', jsonData.Data.ReceiptId);",
+							"        console.log('Receipt UUID saved: ' + jsonData.Data.ReceiptId);",
 							"    }",
 							"}"
 						],
@@ -86,7 +86,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\n  \"ExternalId\": \"order_12345\",\n  \"Intent\": \"sell\",\n  \"Items\": [\n    {\n      \"Type\": \"position\",\n      \"Name\": \"Товар 1\",\n      \"Price\": 1000.00,\n      \"Quantity\": 2,\n      \"Amount\": 2000.00,\n      \"InfoDiscountAmount\": 0,\n      \"MeasurementUnit\": \"шт\",\n      \"PaymentMethod\": \"full_payment\",\n      \"PaymentObject\": \"commodity\",\n      \"Vat\": {\n        \"Type\": \"none\"\n      }\n    }\n  ],\n  \"Payments\": [\n    {\n      \"Type\": \"card\",\n      \"Amount\": 2000.00\n    }\n  ],\n  \"Total\": 2000.00,\n  \"ClientInfo\": {\n    \"EmailOrPhone\": \"test@example.com\"\n   }\n}"
+					"raw": "{\n  \"Request\": {\n    \"Inn\": \"1234567890\",\n    \"Type\": \"Income\",\n    \"InvoiceId\": \"order_12345\",\n    \"CustomerReceipt\": {\n      \"TaxationSystem\": \"Common\",\n      \"Email\": \"test@example.com\",\n      \"Items\": [\n        {\n          \"Label\": \"Товар 1\",\n          \"Price\": 1000.00,\n          \"Quantity\": 2.0,\n          \"Amount\": 2000.00,\n          \"Vat\": \"VatNo\",\n          \"PaymentMethod\": 4,\n          \"Measure\": \"PIECE\"\n        }\n      ],\n      \"CashlessPayments\": [\n        {\n          \"PaymentSum\": 2000.00\n        }\n      ]\n    }\n  },\n  \"group_code\": \"700\"\n}"
 				},
 				"url": {
 					"raw": "https://functions.poehali.dev/a1f0f3f0-5a97-4e8e-959b-c62fca95c14a",
