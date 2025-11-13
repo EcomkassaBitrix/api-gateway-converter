@@ -758,9 +758,14 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         'IncomeCorrection': 'sell_correction',
         'SellCorrection': 'sell_correction',
         'OutcomeCorrection': 'buy_correction',
-        'BuyCorrection': 'buy_correction'
+        'BuyCorrection': 'buy_correction',
+        'IncomeReturnCorrection': 'sell_refund_correction',
+        'SellRefundCorrection': 'sell_refund_correction',
+        'OutcomeReturnCorrection': 'buy_refund_correction',
+        'BuyRefundCorrection': 'buy_refund_correction'
     }
     operation = operation_mapping.get(ferma_request.get('Type', 'Income'), 'sell')
+    is_correction = operation in ['sell_correction', 'buy_correction', 'sell_refund_correction', 'buy_refund_correction']
     
     if not token:
         ferma_error = {
@@ -842,14 +847,30 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         atol_items.append(atol_item)
     
     # Convert payments
-    cashless_payments = receipt.get('CashlessPayments', [])
+    # Ferma API: либо PaymentItems (payments), либо CashlessPayments (cashless_payments)
+    payment_items = receipt.get('PaymentItems', [])
+    ferma_cashless_payments = receipt.get('CashlessPayments', [])
     atol_payments = []
+    atol_cashless_payments = []
     
-    for payment in cashless_payments:
-        payment_sum = float(payment.get('PaymentSum', 0))
-        atol_payments.append({'type': 1, 'sum': payment_sum})
+    # Если есть CashlessPayments - мапим в cashless_payments eKomKassa
+    if ferma_cashless_payments:
+        for payment in ferma_cashless_payments:
+            cashless_payment = {
+                'sum': float(payment.get('PaymentSum') or 0),
+                'method': int(payment.get('PaymentMethodFlag', '1')),
+                'id': payment.get('PaymentIdentifiers', ''),
+                'additional_info': payment.get('AdditionalInformation', '')
+            }
+            atol_cashless_payments.append(cashless_payment)
+    # Иначе используем PaymentItems - мапим в payments eKomKassa
+    elif payment_items:
+        for payment in payment_items:
+            payment_sum = float(payment.get('PaymentSum') or 0)
+            payment_type = payment.get('PaymentType', 1)
+            atol_payments.append({'type': payment_type, 'sum': payment_sum})
     
-    if not atol_payments:
+    if not atol_payments and not atol_cashless_payments:
         total = sum(item['sum'] for item in atol_items)
         atol_payments.append({'type': 1, 'sum': total})
     
@@ -875,22 +896,61 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     timestamp = datetime.now().strftime('%d.%m.%Y %H:%M:%S')
     
     # Build eKomKassa payload
-    ekomkassa_payload = {
-        'timestamp': timestamp,
-        'external_id': ferma_request.get('InvoiceId', str(int(time.time()))),
-        'receipt': {
+    company_data = {
+        'email': client_info.get('email', 'shop@example.com'),
+        'sno': sno,
+        'inn': ferma_request.get('Inn', '0000000000'),
+        'payment_address': ferma_request.get('CallbackUrl', 'https://example.com')
+    }
+    
+    if is_correction:
+        correction_info = receipt.get('CorrectionInfo', {})
+        correction_type_mapping = {
+            'SELF': 'self',
+            'INSTRUCTION': 'instruction'
+        }
+        
+        correction_block = {
             'client': client_info,
-            'company': {
-                'email': client_info.get('email', 'shop@example.com'),
-                'sno': sno,
-                'inn': ferma_request.get('Inn', '0000000000'),
-                'payment_address': ferma_request.get('CallbackUrl', 'https://example.com')
+            'company': company_data,
+            'correction_info': {
+                'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
+                'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
+                'base_number': correction_info.get('ReceiptId', '1'),
+                'base_name': correction_info.get('Description', 'Корректировка')
             },
             'items': atol_items,
-            'payments': atol_payments,
             'total': sum(item['sum'] for item in atol_items)
         }
-    }
+        
+        if atol_cashless_payments:
+            correction_block['cashless_payments'] = atol_cashless_payments
+        else:
+            correction_block['payments'] = atol_payments
+        
+        ekomkassa_payload = {
+            'timestamp': timestamp,
+            'external_id': ferma_request.get('InvoiceId', str(int(time.time()))),
+            'correction': correction_block
+        }
+    else:
+        receipt_block = {
+            'client': client_info,
+            'company': company_data,
+            'items': atol_items,
+            'total': sum(item['sum'] for item in atol_items)
+        }
+        
+        if atol_cashless_payments:
+            receipt_block['cashless_payments'] = atol_cashless_payments
+        else:
+            receipt_block['payments'] = atol_payments
+        
+        ekomkassa_payload = {
+            'timestamp': timestamp,
+            'external_id': ferma_request.get('InvoiceId', str(int(time.time()))),
+            'receipt': receipt_block
+        }
     
     ekomkassa_url = f'https://app.ecomkassa.ru/fiscalorder/v5/{group_code}/{operation}'
     
