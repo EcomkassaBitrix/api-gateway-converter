@@ -472,6 +472,19 @@ def status_handler():
         response.headers['Access-Control-Max-Age'] = '86400'
         return response, 200
     
+    # Определяем debug-режим для песочницы на основе заголовков
+    origin = request.headers.get('Origin', '').lower()
+    referer = request.headers.get('Referer', '').lower()
+    is_web_debug = (
+        'gw.ecomkassa.ru' in origin or
+        'gw.ecomkassa.ru' in referer or
+        'localhost' in origin or
+        'localhost' in referer or
+        '127.0.0.1' in origin or
+        '127.0.0.1' in referer
+    )
+    logger.info(f"[STATUS-DEBUG] origin={origin}, referer={referer}, is_web_debug={is_web_debug}")
+    
     # Ferma использует AuthToken, GroupCode, uuid
     auth_token = request.args.get('AuthToken') or request.args.get('token')
     group_code = (request.args.get('GroupCode') or request.args.get('group_code', '700')).lower()
@@ -640,6 +653,10 @@ def status_handler():
                   duration_ms=duration_ms,
                   status_code=response.status_code)
         
+        # Для песочницы добавляем отладочную информацию
+        if is_web_debug:
+            ferma_response['ekomkassa_response'] = response_json
+        
         flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
         return flask_response, client_status
@@ -716,6 +733,19 @@ def receipt_handler():
 def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[str], 
                                group_code: str, start_time: float, request_id: Optional[str]):
     '''Конвертация полного формата Ferma API в eKomKassa'''
+    
+    # Определяем debug-режим для песочницы на основе заголовков
+    origin = request.headers.get('Origin', '').lower()
+    referer = request.headers.get('Referer', '').lower()
+    is_web_debug = (
+        'gw.ecomkassa.ru' in origin or
+        'gw.ecomkassa.ru' in referer or
+        'localhost' in origin or
+        'localhost' in referer or
+        '127.0.0.1' in origin or
+        '127.0.0.1' in referer
+    )
+    logger.info(f"[RECEIPT-DEBUG] origin={origin}, referer={referer}, is_web_debug={is_web_debug}")
     
     # Определяем operation в самом начале для использования в логах
     operation_mapping = {
@@ -964,6 +994,10 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             duration_ms=duration_ms,
             request_id=request_id
         )
+        
+        # Для песочницы добавляем отладочную информацию
+        if is_web_debug:
+            ferma_response['ekomkassa_response'] = response_json
         
         flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
