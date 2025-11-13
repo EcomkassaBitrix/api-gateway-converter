@@ -257,30 +257,9 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     cashless_payments = receipt.get('CashlessPayments', [])
     atol_payments = []
     
-    payment_type_mapping = {
-        '0': 0,
-        '1': 1,
-        '2': 2,
-        '3': 3,
-        '4': 4,
-        '5': 5,
-        '6': 6,
-        '7': 7,
-        '8': 8,
-        '9': 9,
-        '10': 10,
-        '11': 11,
-        '12': 12,
-        '13': 13,
-        '14': 14,
-        '15': 15,
-        '16': 16
-    }
-    
     for payment in cashless_payments:
         payment_sum = float(payment.get('PaymentSum', 0))
-        payment_method_flag = str(payment.get('PaymentMethodFlag', '1'))
-        payment_type = payment_type_mapping.get(payment_method_flag, 1)
+        payment_type = payment.get('PaymentType', 1)  # 0-наличные, 1-безнал, 2-аванс, 3-кредит, 4-встречное
         
         atol_payment = {
             'type': payment_type,
