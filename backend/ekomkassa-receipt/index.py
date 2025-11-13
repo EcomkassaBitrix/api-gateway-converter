@@ -117,14 +117,21 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     )
     
     body_data = json.loads(event.get('body', '{}'))
+    query_params = event.get('queryStringParameters') or {}
     
     logger.info(f"[RECEIPT] Incoming request: {json.dumps(body_data, ensure_ascii=False)}")
     log_to_db('ekomkassa-receipt', 'INFO', 'Incoming receipt request',
               request_data=body_data,
               request_id=request_id)
     
-    # Токен: приоритет заголовку X-Auth-Token, fallback на body.token
-    token = headers.get('X-Auth-Token') or headers.get('x-auth-token') or body_data.get('token')
+    # Токен по стандарту Ferma API: query-параметр AuthToken, fallback на заголовок/body
+    token = (
+        query_params.get('AuthToken') or 
+        query_params.get('authtoken') or
+        headers.get('X-Auth-Token') or 
+        headers.get('x-auth-token') or 
+        body_data.get('token')
+    )
     
     ferma_request = body_data.get('Request')
     login = body_data.get('login')
