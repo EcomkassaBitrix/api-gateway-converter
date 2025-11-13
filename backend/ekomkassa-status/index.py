@@ -127,10 +127,11 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         headers.get('x-auth-token')
     )
     
-    group_code = params.get('group_code', '700')
-    uuid = params.get('uuid')
-    login = params.get('login')
-    password = params.get('password')
+    # Поддержка разных регистров параметров
+    group_code = params.get('group_code') or params.get('GroupCode') or '700'
+    uuid = params.get('uuid') or params.get('Uuid')
+    login = params.get('Login') or params.get('login')
+    password = params.get('Password') or params.get('password')
     
     logger.info(f"[STATUS] Incoming request: uuid={uuid}, group_code={group_code}, token={'***' if auth_token else None}")
     log_to_db('ekomkassa-status', 'INFO', 'Incoming status check request',

@@ -134,11 +134,13 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     )
     
     ferma_request = body_data.get('Request')
-    login = body_data.get('login')
-    password = body_data.get('password')
+    
+    # Login/Password: поддержка разных регистров
+    login = body_data.get('Login') or body_data.get('login')
+    password = body_data.get('Password') or body_data.get('password')
     
     # group_code: для песочницы используем дефолт '700', для production API обязателен
-    group_code = body_data.get('group_code')
+    group_code = body_data.get('group_code') or body_data.get('GroupCode')
     if not group_code:
         if is_web_debug:
             group_code = '700'
