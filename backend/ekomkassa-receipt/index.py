@@ -254,21 +254,38 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
         atol_items.append(atol_item)
     
-    # Поддержка двух форматов: CashlessPayments (старый) и PaymentItems (новый)
+    # Поддержка всех типов платежей Ferma API
+    cash_payments = receipt.get('CashPayments', [])
     cashless_payments = receipt.get('CashlessPayments', [])
-    payment_items = receipt.get('PaymentItems', [])
-    all_payments = cashless_payments + payment_items
+    prepaid_payments = receipt.get('PrepaidPayments', [])
+    advance_payments = receipt.get('AdvancePayments', [])
+    credit_payments = receipt.get('CreditPayments', [])
     atol_payments = []
     
-    for payment in all_payments:
-        payment_sum = float(payment.get('PaymentSum') or payment.get('Sum') or 0)
-        payment_type = payment.get('PaymentType', 1)  # 0-наличные, 1-безнал, 2-аванс, 3-кредит, 4-встречное
-        
-        atol_payment = {
-            'type': payment_type,
-            'sum': payment_sum
-        }
-        atol_payments.append(atol_payment)
+    # Наличные (type: 0)
+    for payment in cash_payments:
+        payment_sum = float(payment.get('PaymentSum') or 0)
+        atol_payments.append({'type': 0, 'sum': payment_sum})
+    
+    # Безналичные (type: 1)
+    for payment in cashless_payments:
+        payment_sum = float(payment.get('PaymentSum') or 0)
+        atol_payments.append({'type': 1, 'sum': payment_sum})
+    
+    # Предоплата (type: 2)
+    for payment in prepaid_payments:
+        payment_sum = float(payment.get('PaymentSum') or 0)
+        atol_payments.append({'type': 2, 'sum': payment_sum})
+    
+    # Аванс (type: 2)
+    for payment in advance_payments:
+        payment_sum = float(payment.get('PaymentSum') or 0)
+        atol_payments.append({'type': 2, 'sum': payment_sum})
+    
+    # Кредит (type: 3)
+    for payment in credit_payments:
+        payment_sum = float(payment.get('PaymentSum') or 0)
+        atol_payments.append({'type': 3, 'sum': payment_sum})
     
     if not atol_payments:
         total = sum(item['sum'] for item in atol_items)
