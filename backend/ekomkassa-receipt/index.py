@@ -261,7 +261,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     atol_payments = []
     
     for payment in all_payments:
-        payment_sum = float(payment.get('PaymentSum', 0) or payment.get('Sum', 0))
+        payment_sum = float(payment.get('PaymentSum') or payment.get('Sum') or 0)
         payment_type = payment.get('PaymentType', 1)  # 0-наличные, 1-безнал, 2-аванс, 3-кредит, 4-встречное
         
         atol_payment = {
