@@ -734,6 +734,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                                group_code: str, start_time: float, request_id: Optional[str]):
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
+    logger.info(f"[RECEIPT-ENTER] Function called, request_id={request_id}")
+    
     # Определяем debug-режим для песочницы на основе заголовков
     origin = request.headers.get('Origin', '').lower()
     referer = request.headers.get('Referer', '').lower()
