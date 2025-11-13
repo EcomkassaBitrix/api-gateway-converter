@@ -106,9 +106,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
-    # Токен из заголовка X-Auth-Token (как в Ferma API)
-    auth_token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
-    
     # Проверяем, запрос от веб-интерфейса (песочницы) на poehali.dev
     origin = headers.get('Origin', '').lower()
     referer = headers.get('Referer', '').lower()
@@ -121,6 +118,15 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     )
     
     params = event.get('queryStringParameters') or {}
+    
+    # Токен по стандарту Ferma API: query-параметр AuthToken, fallback на заголовок
+    auth_token = (
+        params.get('AuthToken') or 
+        params.get('authtoken') or
+        headers.get('X-Auth-Token') or 
+        headers.get('x-auth-token')
+    )
+    
     group_code = params.get('group_code', '700')
     uuid = params.get('uuid')
     login = params.get('login')
