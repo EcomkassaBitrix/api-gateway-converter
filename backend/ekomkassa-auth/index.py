@@ -68,6 +68,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         'localhost' in referer
     )
     
+    logger.info(f"[AUTH] Debug mode check: origin={origin}, referer={referer}, X-Debug-Mode={headers.get('X-Debug-Mode')}, is_web_debug={is_web_debug}")
+    
     if method == 'OPTIONS':
         return {
             'statusCode': 200,
