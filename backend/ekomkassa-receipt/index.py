@@ -105,9 +105,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'isBase64Encoded': False
         }
     
-    # Токен из заголовка X-Auth-Token (как в Ferma API)
-    token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
-    
     # Проверяем, запрос от веб-интерфейса (песочницы) на poehali.dev
     origin = headers.get('Origin', '').lower()
     referer = headers.get('Referer', '').lower()
@@ -125,6 +122,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     log_to_db('ekomkassa-receipt', 'INFO', 'Incoming receipt request',
               request_data=body_data,
               request_id=request_id)
+    
+    # Токен: приоритет заголовку X-Auth-Token, fallback на body.token
+    token = headers.get('X-Auth-Token') or headers.get('x-auth-token') or body_data.get('token')
     
     ferma_request = body_data.get('Request')
     login = body_data.get('login')
