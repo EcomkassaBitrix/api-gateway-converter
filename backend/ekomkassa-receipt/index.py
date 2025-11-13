@@ -254,17 +254,23 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         }
         atol_items.append(atol_item)
     
-    # Ferma API: либо PaymentItems (основной), либо CashlessPayments (для безнала с доп. полями)
+    # Ferma API: либо PaymentItems (payments), либо CashlessPayments (cashless_payments)
     payment_items = receipt.get('PaymentItems', [])
-    cashless_payments = receipt.get('CashlessPayments', [])
+    ferma_cashless_payments = receipt.get('CashlessPayments', [])
     atol_payments = []
+    atol_cashless_payments = []
     
-    # Если есть CashlessPayments - используем его (всегда type=1)
-    if cashless_payments:
-        for payment in cashless_payments:
-            payment_sum = float(payment.get('PaymentSum') or 0)
-            atol_payments.append({'type': 1, 'sum': payment_sum})
-    # Иначе используем PaymentItems (там указан PaymentType)
+    # Если есть CashlessPayments - мапим в cashless_payments eKomKassa
+    if ferma_cashless_payments:
+        for payment in ferma_cashless_payments:
+            cashless_payment = {
+                'sum': float(payment.get('PaymentSum') or 0),
+                'method': payment.get('PaymentMethodFlag', '1'),
+                'id': payment.get('PaymentIdentifiers', ''),
+                'additional_info': payment.get('AdditionalInformation', '')
+            }
+            atol_cashless_payments.append(cashless_payment)
+    # Иначе используем PaymentItems - мапим в payments eKomKassa
     elif payment_items:
         for payment in payment_items:
             payment_sum = float(payment.get('PaymentSum') or 0)
@@ -330,34 +336,48 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             'INSTRUCTION': 'instruction'
         }
         
+        correction_block = {
+            'client': client_info,
+            'company': company_data,
+            'correction_info': {
+                'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
+                'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
+                'base_number': correction_info.get('ReceiptId', '1'),
+                'base_name': correction_info.get('Description', 'Корректировка')
+            },
+            'items': atol_items,
+            'total': sum(item['sum'] for item in atol_items)
+        }
+        
+        # Добавляем payments или cashless_payments
+        if atol_cashless_payments:
+            correction_block['cashless_payments'] = atol_cashless_payments
+        else:
+            correction_block['payments'] = atol_payments
+        
         atol_receipt = {
             'timestamp': timestamp,
             'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
-            'correction': {
-                'client': client_info,
-                'company': company_data,
-                'correction_info': {
-                    'type': correction_type_mapping.get(correction_info.get('Type', 'SELF'), 'self'),
-                    'base_date': correction_info.get('ReceiptDate', '01.01.2025'),
-                    'base_number': correction_info.get('ReceiptId', '1'),
-                    'base_name': correction_info.get('Description', 'Корректировка')
-                },
-                'items': atol_items,
-                'payments': atol_payments,
-                'total': sum(item['sum'] for item in atol_items)
-            }
+            'correction': correction_block
         }
     else:
+        receipt_block = {
+            'client': client_info,
+            'company': company_data,
+            'items': atol_items,
+            'total': sum(item['sum'] for item in atol_items)
+        }
+        
+        # Добавляем payments или cashless_payments
+        if atol_cashless_payments:
+            receipt_block['cashless_payments'] = atol_cashless_payments
+        else:
+            receipt_block['payments'] = atol_payments
+        
         atol_receipt = {
             'timestamp': timestamp,
             'external_id': ferma_request.get('InvoiceId', f'order_{context.request_id}'),
-            'receipt': {
-                'client': client_info,
-                'company': company_data,
-                'items': atol_items,
-                'payments': atol_payments,
-                'total': sum(item['sum'] for item in atol_items)
-            }
+            'receipt': receipt_block
         }
     
     if ferma_request.get('CallbackUrl'):
