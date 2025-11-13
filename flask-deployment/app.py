@@ -454,7 +454,7 @@ def auth_handler():
 # ============================================
 # STATUS ENDPOINT
 # ============================================
-@app.route('/api/kkt/cloud/status', methods=['GET', 'OPTIONS'])
+@app.route('/api/kkt/cloud/status', methods=['GET', 'POST', 'OPTIONS'])
 def status_handler():
     '''
     Ferma-совместимый API для получения статуса чека
@@ -467,28 +467,36 @@ def status_handler():
     if request.method == 'OPTIONS':
         response = jsonify({})
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
         response.headers['Access-Control-Max-Age'] = '86400'
         return response, 200
     
-    # Определяем debug-режим для песочницы на основе заголовков
-    origin = request.headers.get('Origin', '').lower()
-    referer = request.headers.get('Referer', '').lower()
-    is_web_debug = (
-        'gw.ecomkassa.ru' in origin or
-        'gw.ecomkassa.ru' in referer or
-        'localhost' in origin or
-        'localhost' in referer or
-        '127.0.0.1' in origin or
-        '127.0.0.1' in referer
-    )
-    logger.info(f"[STATUS-DEBUG] origin={origin}, referer={referer}, is_web_debug={is_web_debug}")
+    # Читаем body (если есть)
+    body_data = request.get_json(silent=True) or {}
+    request_data = body_data.get('Request', {})
     
-    # Ferma использует AuthToken, GroupCode, uuid
-    auth_token = request.args.get('AuthToken') or request.args.get('token')
-    group_code = (request.args.get('GroupCode') or request.args.get('group_code', '700')).lower()
-    uuid = request.args.get('uuid') or request.args.get('Uuid')
+    # Ferma использует AuthToken, GroupCode, uuid - проверяем и query, и body
+    auth_token = (
+        request.args.get('AuthToken') or 
+        request.args.get('token') or
+        body_data.get('AuthToken') or
+        body_data.get('token')
+    )
+    group_code = (
+        request.args.get('GroupCode') or 
+        request.args.get('group_code') or
+        body_data.get('GroupCode') or
+        body_data.get('groupCode') or
+        request_data.get('groupCode', '700')
+    ).lower()
+    uuid = (
+        request.args.get('uuid') or 
+        request.args.get('Uuid') or
+        body_data.get('uuid') or
+        body_data.get('Uuid') or
+        request_data.get('ReceiptId')
+    )
     
     logger.info(f"[STATUS] Incoming request: uuid={uuid}, GroupCode={group_code}, AuthToken={'***' if auth_token else None}")
     log_to_db('status', 'INFO', 'Incoming status check request',
@@ -605,13 +613,13 @@ def status_handler():
                 
                 ferma_data['Device'] = {
                     'DeviceId': payload.get('kkt_reg_id') or None,
-                    'RNM': payload.get('ecr_registration_number') or None,  # Регистрационный номер ККТ
-                    'ZN': payload.get('serial_number') or None,  # Заводской номер
-                    'FN': payload.get('fn_number') or None,  # Номер ФН
-                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') is not None else None,  # Номер ФД
-                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') is not None else None,  # ФПД (может быть 0)
-                    'ShiftNumber': payload.get('shift_number') if payload.get('shift_number') is not None else None,  # Номер смены
-                    'ReceiptNumInShift': payload.get('fiscal_receipt_number') if payload.get('fiscal_receipt_number') is not None else None,  # Номер чека в смене
+                    'RNM': payload.get('ecr_registration_number') or None,
+                    'ZN': payload.get('serial_number') or None,
+                    'FN': payload.get('fn_number') or None,
+                    'FDN': str(payload.get('fiscal_document_number')) if payload.get('fiscal_document_number') is not None else None,
+                    'FPD': str(payload.get('fiscal_document_attribute')) if payload.get('fiscal_document_attribute') is not None else None,
+                    'ShiftNumber': payload.get('shift_number') if payload.get('shift_number') is not None else None,
+                    'ReceiptNumInShift': payload.get('fiscal_receipt_number') if payload.get('fiscal_receipt_number') is not None else None,
                     'DeviceType': None,
                     'OfdReceiptUrl': ofd_url
                 }
@@ -652,10 +660,6 @@ def status_handler():
                   request_id=request_id,
                   duration_ms=duration_ms,
                   status_code=response.status_code)
-        
-        # Для песочницы добавляем отладочную информацию
-        if is_web_debug:
-            ferma_response['ekomkassa_response'] = response_json
         
         flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
@@ -715,10 +719,22 @@ def receipt_handler():
     
     # Ferma формат использует Request с заглавной буквы
     ferma_request = body_data.get('Request')
-    # AuthToken или token (совместимость)
-    auth_token = body_data.get('AuthToken') or body_data.get('token')
-    # GroupCode или group_code (совместимость)
-    group_code = (body_data.get('GroupCode') or body_data.get('group_code', '700')).lower()
+    
+    # AuthToken или token - читаем из URL и body (совместимость)
+    auth_token = (
+        request.args.get('AuthToken') or 
+        request.args.get('token') or
+        body_data.get('AuthToken') or 
+        body_data.get('token')
+    )
+    
+    # GroupCode или group_code - читаем из URL и body (совместимость)
+    group_code = (
+        request.args.get('GroupCode') or 
+        request.args.get('group_code') or
+        body_data.get('GroupCode') or 
+        body_data.get('group_code', '700')
+    ).lower()
     
     if ferma_request:
         result = convert_ferma_to_ekomkassa(ferma_request, auth_token, 
@@ -734,22 +750,8 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                                group_code: str, start_time: float, request_id: Optional[str]):
     '''Конвертация полного формата Ferma API в eKomKassa'''
     
-    logger.info(f"[RECEIPT-ENTER] Function called, request_id={request_id}")
-    
-    # Определяем debug-режим для песочницы на основе заголовков
-    origin = request.headers.get('Origin', '').lower()
-    referer = request.headers.get('Referer', '').lower()
-    is_web_debug = (
-        'gw.ecomkassa.ru' in origin or
-        'gw.ecomkassa.ru' in referer or
-        'localhost' in origin or
-        'localhost' in referer or
-        '127.0.0.1' in origin or
-        '127.0.0.1' in referer
-    )
-    logger.info(f"[RECEIPT-DEBUG] origin={origin}, referer={referer}, is_web_debug={is_web_debug}")
-    
     # Определяем operation в самом начале для использования в логах
+    logger.info(f"[RECEIPT-ENTER] Function called, request_id={request_id}")
     operation_mapping = {
         'Income': 'sell',
         'IncomeReturn': 'sell_refund',
@@ -867,7 +869,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
     elif payment_items:
         for payment in payment_items:
             payment_sum = float(payment.get('PaymentSum') or 0)
-            payment_type = payment.get('PaymentType', 1)
+            payment_type = payment.get('PaymentType', 1)  # 0-наличные, 1-безнал, 2-аванс, 3-кредит, 4-встречное
             atol_payments.append({'type': payment_type, 'sum': payment_sum})
     
     if not atol_payments and not atol_cashless_payments:
@@ -985,6 +987,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
                     data={'ReceiptId': response_json['uuid']}
                 )
                 client_status = 200
+            
             elif response_json.get('error'):
                 # Ошибка от eKomKassa
                 error_obj = response_json['error']
@@ -1056,10 +1059,6 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
             duration_ms=duration_ms,
             request_id=request_id
         )
-        
-        # Для песочницы добавляем отладочную информацию
-        if is_web_debug:
-            ferma_response['ekomkassa_response'] = response_json
         
         flask_response = jsonify(ferma_response)
         flask_response.headers['Access-Control-Allow-Origin'] = '*'
@@ -1471,7 +1470,7 @@ def replay_request(log_id):
                 'duration_ms': duration_ms
             }), 200
             
-        except requests.exceptions.RequestException as e:
+        except requests.RequestException as e:
             duration_ms = int((time.time() - start_time) * 1000)
             return jsonify({
                 'success': False,
