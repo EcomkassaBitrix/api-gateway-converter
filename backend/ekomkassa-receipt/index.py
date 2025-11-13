@@ -265,7 +265,7 @@ def convert_ferma_to_ekomkassa(ferma_request: Dict[str, Any], token: Optional[st
         for payment in ferma_cashless_payments:
             cashless_payment = {
                 'sum': float(payment.get('PaymentSum') or 0),
-                'method': payment.get('PaymentMethodFlag', '1'),
+                'method': int(payment.get('PaymentMethodFlag', '1')),
                 'id': payment.get('PaymentIdentifiers', ''),
                 'additional_info': payment.get('AdditionalInformation', '')
             }
